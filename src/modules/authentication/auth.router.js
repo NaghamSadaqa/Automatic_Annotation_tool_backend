@@ -6,6 +6,8 @@ import jwt from 'jsonwebtoken';
 import validation from '../../middleware/validation.js';
 import {registerSchema} from './auth.validation.js'
 import { where } from 'sequelize';
+import dotenv from 'dotenv';
+dotenv.config();
 const router = Router();
 
 // register
@@ -38,7 +40,7 @@ router.post('/login', async (req,res)=>{
     if(check == false){
      return res.status(404).json({message:"invalid password"});
     }
-    const token = jwt.sign({ id:user.id,name:user.userName , role:user.role }, 'NaghamSadaqa');
+    const token = jwt.sign({ user_id:user.user_id,name:user.userName , role:user.role }, process.env.JWT_SECRET);
     return res.status(200).json({message:"sucsess", token});
     });
     export default router;

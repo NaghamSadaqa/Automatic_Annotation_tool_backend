@@ -1,8 +1,9 @@
 
 import express from 'express';
 import initApp from './src/index.router.js';
+import cors from 'cors';
 const app = express();
-
+app.use(cors());
 
 initApp(app,express);
 

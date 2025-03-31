@@ -3,7 +3,7 @@ import  {sequelize} from '../connection.js';
 import { where } from 'sequelize';
 import bcrypt from 'bcryptjs';
 const UserModel = sequelize.define("User",{
-    id:{
+    user_id:{
         type:DataTypes.INTEGER,
         primaryKey:true,
         autoIncrement:true,
@@ -57,5 +57,7 @@ export async function createAdmin() {
       console.error("Error creating admin:", error);
     }
   }
+
+
 
 export default UserModel;
