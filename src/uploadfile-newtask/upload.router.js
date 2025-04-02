@@ -4,7 +4,7 @@ import authenticateToken from '../middleware/auth.js';
 import {Router} from 'express';
 import upload from '../utils/multer.js';
 const router = Router();
-router.post("/upload", authenticateToken, upload.single("file"), async (req, res) => {
+router.post("/upload", authenticateToken, upload.single("dataSetFile"), async (req, res) => {
     try {
         const { task_name, task_description, annotation_type, labels } = req.body;
         const uploaded_by = req.user.user_id; // استخراج user_id من التوكن
