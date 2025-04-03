@@ -32,6 +32,11 @@ const UserModel = sequelize.define("User",{
     type:DataTypes.ENUM('user','admin'),
     defaultValue:'user',
     allowNull:false,
+    },
+    
+    is_deleted:{
+    type:DataTypes.BOOLEAN,
+    defaultValue:false,
     }
 });
 
@@ -48,6 +53,7 @@ export async function createAdmin() {
           password: hashedpassword, 
           dateofbirth: new Date("2002-10-17"),
           role: "admin",
+          is_deleted:false,
         });
         console.log("Admin account created successfully.");
       } else {
