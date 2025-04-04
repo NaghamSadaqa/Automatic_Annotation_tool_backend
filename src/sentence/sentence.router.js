@@ -105,7 +105,7 @@ router.post("/process-and-save", authenticateToken, async (req, res) => {
 router.get("/getallsentences", authenticateToken, async (req, res) => {
     try {
         const sentences = await SentenceModel.findAll();
-        return res.status(200).json(sentences);
+        return res.status(200).json(sentences);// ممكن احدد انه يرجع بس الجمل بدون اي معلومات تانية هون برجع كلشي عن الجمل سواء كنص  وغيره
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }

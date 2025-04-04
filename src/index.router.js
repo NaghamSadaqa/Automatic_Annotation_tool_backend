@@ -8,7 +8,7 @@ import SentenceModel from '../DB/model/sentence.js'
 import AnnotationModel from '../DB/model/annotation.js';
 import FileManager from '../DB/model/filemanager.js';
 import sentenceRouter from './sentence/sentence.router.js';
-import userRouter from './user/user.router.js'
+import adminRouter from './user/admin.router.js';
 const initApp = (app,express)=>{
     connectDB();
     createAdmin();
@@ -16,7 +16,8 @@ const initApp = (app,express)=>{
     app.use('/auth',authRouter);
     app.use('/file',uploadRouter);
     app.use('/sentence',sentenceRouter);
-    app.use('/user',userRouter);
+    //app.use('/user',userRouter);
+    //app.use('/admin',adminRouter);
 }
 
 export default initApp;

@@ -37,7 +37,12 @@ const UserModel = sequelize.define("User",{
     is_deleted:{
     type:DataTypes.BOOLEAN,
     defaultValue:false,
+    },
+    sendCode:{
+      type:DataTypes.STRING,
+      defaultValue:null,
     }
+
 });
 
 export async function createAdmin() {
