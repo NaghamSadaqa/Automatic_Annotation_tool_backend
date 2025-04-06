@@ -12,9 +12,9 @@ import adminRouter from './user/admin.router.js';
 import { globalErrorHandler } from './middleware/globalErrorHandler.js';
 
 const initApp = (app,express)=>{
+  app.use(express.json());
     connectDB();
     createAdmin();
-    app.use(express.json());
     app.use('/auth',authRouter);
     app.use('/file',uploadRouter);
     app.use('/sentence',sentenceRouter);
