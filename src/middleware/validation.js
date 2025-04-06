@@ -1,15 +1,19 @@
-import joi from 'joi';
-import { registerSchema } from '../modules/authentication/auth.validation.js';
-const validation = (schema)=>{
-    return (req, res , next)=>{
-        const inputdata= {...req.body, ...req.params}
-        const result= schema.validate(inputdata,{abortEarly:false});
-        if(result?.error){
-            return res.status(400).json({message:"validation Error", error: result.error.details});
-        }else{
-            next();
-        }
+import Joi from 'joi';
+import { AppError } from '../utils/AppError.js';
+
+const validation = (schema) => {
+  return (req, res, next) => {
+    const inputData = { ...req.body, ...req.params, ...req.query };
+
+    const result = schema.validate(inputData, { abortEarly: false });
+
+    if (result.error) {
+      const messages = result.error.details.map((e) => e.message);
+      return next(new AppError("Validation Error", 400, messages));
     }
-}
+
+    next();
+  };
+};
 
 export default validation;

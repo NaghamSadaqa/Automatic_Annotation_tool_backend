@@ -1,9 +1,12 @@
 
-import express from 'express';
+import express, {urlencoded} from 'express';
 import initApp from './src/index.router.js';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 const app = express();
-app.use(cors());
+app.use(cors({ credentials: true, origin: "http://localhost:5173" }));
+app.use(urlencoded({ extended: true, limit: '100mb' }));
+app.use(cookieParser());
 
 initApp(app,express);
 

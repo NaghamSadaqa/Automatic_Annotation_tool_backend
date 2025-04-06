@@ -9,6 +9,8 @@ import AnnotationModel from '../DB/model/annotation.js';
 import FileManager from '../DB/model/filemanager.js';
 import sentenceRouter from './sentence/sentence.router.js';
 import adminRouter from './user/admin.router.js';
+import { globalErrorHandler } from './middleware/globalErrorHandler.js';
+
 const initApp = (app,express)=>{
     connectDB();
     createAdmin();
@@ -18,6 +20,9 @@ const initApp = (app,express)=>{
     app.use('/sentence',sentenceRouter);
     //app.use('/user',userRouter);
     //app.use('/admin',adminRouter);
+
+    app.use(globalErrorHandler);
+    
 }
 
 export default initApp;

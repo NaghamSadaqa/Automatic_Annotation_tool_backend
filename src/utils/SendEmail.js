@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   });
 
 export async function sendEmail(to, subject, body){
-  try{
+  
   const info = await transporter.sendMail({
     from: '"Graduation Project" <naghamsadaqa217@gmail.com>', // sender address
     to,
@@ -16,7 +16,5 @@ export async function sendEmail(to, subject, body){
     html:body,
   });
   console.log('Email sent:', info.messageId);
-} catch (error) {
-    console.error("Error sending email:", error);
-}
+
 }
