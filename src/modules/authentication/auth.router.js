@@ -9,9 +9,9 @@ dotenv.config();
 const router = Router();
 
 // register
-router.post('/register',validation(registerSchema) , asyncHandler(register)); 
+router.post('/register',validation(registerSchema) , register ); 
 // log in
-router.post('/login', asyncHandler(login));
+router.post('/login', login );
 // forget password 
 router.post('/sendCode', asyncHandler(sendCode));
 router.post("/reset-password", asyncHandler(resetPassword));
