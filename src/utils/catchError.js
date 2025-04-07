@@ -7,5 +7,4 @@ export const asyncHandler =(func)=>{
     }
  }
 
-
 }
