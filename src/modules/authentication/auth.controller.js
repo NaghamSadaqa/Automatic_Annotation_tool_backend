@@ -10,20 +10,22 @@ import { AppError } from '../../utils/AppError.js';
 dotenv.config();
 
  //register 
-export const register = async(req, res , next)=>{
+ export const register = async (req, res, next) => {
   try {
     const { userName, email, password, confirmPassword, dateofbirth } = req.body;
 
     // Check user existence
-    const existingUser = await UserModel.findOne({ where: { email } });
+    const existingUser = await UserModel.findOne({ where: { email } })
     if (existingUser) {
-		// 409: conflict : تعارض الايميل المدخل مع ايميل موجود أصلا في قاعدة البيانات
+      // 409: conflict : تعارض الايميل المدخل مع ايميل موجود أصلا في قاعدة البيانات
+
       return res.status(409).send({
-        ErrorMsg: "Email already registered",
+        ErrorMsg: "Oops! An error occurred during registration process. Please enter a valid data and try again",
         ErrorFields: {
-          email: "Please enter another email address"
+          email: "This email is already used. Please type another one"
         }
-      });
+      })
+
     }
 
     // Hash the password
@@ -40,18 +42,23 @@ export const register = async(req, res , next)=>{
     return res.status(201).send({ message: "Account created successfully" });
 
   } catch (error) {
-	  
+
     // Handle Sequelize unique constraint errors
-	// هون السيستم ضرب ايرور بسبب تعارض الايميل مع ايميل مسجل مسبقا
+    // هون السيستم ضرب ايرور بسبب تعارض الايميل مع ايميل مسجل مسبقا
     if (error.name === 'SequelizeUniqueConstraintError') {
       const fieldErrors = {};
+      
       error.errors.forEach((err) => {
-        fieldErrors[err.path] = err.message;
+        if (err.path === 'email') {
+          fieldErrors.email = "This email is already used. Please type another one";
+        } else if (err.path === 'userName') {
+          fieldErrors.userName = "This username is already taken. Please choose another";
+        } else {
+          fieldErrors[err.path] = err.message;
+        }
       });
-	  
-      return res.status(409).send(
-	  {
-        ErrorMsg: "Duplicate field(s) found",
+      return res.status(409).send({
+        ErrorMsg: "Oops! There are some conflicts in your data. Please check the errors and try again.",
         ErrorFields: fieldErrors
       });
     }
@@ -64,14 +71,14 @@ export const register = async(req, res , next)=>{
       });
 
       return res.status(422).send({
-        ErrorMsg: "Validation error",
+        ErrorMsg: "Are you sure of this user name? user name must has at least 3 characters with maximum 30 character",
         ErrorFields: fieldErrors
       });
     }
 
     // System error: could be runtime exception (for example x = 10/0 )
     return res.status(500).send({
-      ErrorMsg: "Internal server error",
+      ErrorMsg: "Oh Sorry! The operation could not be completed due to a server error. Please try again later",
       ErrorFields: null
     });
   };
