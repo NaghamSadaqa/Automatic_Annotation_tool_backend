@@ -90,10 +90,8 @@ export const login = async (req, res) => {
 
     if (!user) {
       return res.status(404).send({
-        ErrorMsg: "Invalid data",
-        ErrorFields: {
-          email: "No account found with this email"
-        }
+        ErrorMsg: "Incorrect Email or password",
+        ErrorFields: null
       });
     }
 
@@ -101,10 +99,8 @@ export const login = async (req, res) => {
     const isPasswordValid = bcrypt.compareSync(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).send({
-        ErrorMsg: "Invalid data",
-        ErrorFields: {
-          password: "Incorrect password"
-        }
+        ErrorMsg: "Incorrect Email or password",
+        ErrorFields: null
       });
     }
 
@@ -116,7 +112,7 @@ export const login = async (req, res) => {
         role: user.role
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" } // مثلاً يوم واحد
+      
     );
 
     return res.status(200).send({
@@ -125,7 +121,6 @@ export const login = async (req, res) => {
     });
 
   } catch (error) {
-    // الخطأ العام (سيستمي)
     return res.status(500).send({
       ErrorMsg: "Internal server error",
       ErrorFields: null
@@ -147,8 +142,8 @@ export const sendCode =async (req,res)=>{
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const generateCode = customAlphabet('1234567890abcdefABCD', 4);
-    const code = generateCode();
-
+    const code = generateCode(); // شفري الكود نغم
+    const hashcode = bcrypt.hashSync(code,8);
 
     await UserModel.update({ sendCode: code }, { where: { email } });
 
@@ -180,3 +175,10 @@ export const resetPassword= async (req,res)=>{
     await user.save();
     res.status(200).json({message:"Password reset successfully!"});
 };
+// ثلث مراحل حتى اعمل استعادة لكلمة المرور , 
+//المرحلة الاولى : دخل ايميلك ببعتلك كود وبخزن الكود بالداتا بيس وبرسله توكين فيه الايميل 
+// وهو حاليا بعده عن ارسال الايميل
+// يعني صار اليوزر موديلي توكين اعرف مين اليوزر الي بده يغير ايميله
+// بعدها المستخدم بنتقل للمرحلة الثانية بدخل الكود هاد كله بال api تبع ارسال الكود
+//  الخطوة الثانية: الابي اي تبع الريست بعد ما وصلني التوكين صحيح وبعد ما دخل الكود ودخل التوكين تبعه وطلع صحيح برجعله ريسبونس فاضي انه خلص لوج ان 
+//المرحلة الثالثة : بظهر للمستخدم باسوورد جديد وكونفيرم لهاد النيو باسوورد 
