@@ -8,12 +8,20 @@ const validation = (schema) => {
     const result = schema.validate(inputData, { abortEarly: false });
 
     if (result.error) {
-      const messages = result.error.details.map((e) => e.message);
-      return next(new AppError("Validation Error", 400, messages));
+      const ErrorFields = {};
+
+      result.error.details.forEach((e) => {
+        const field = e.path[0];
+        ErrorFields[field] = e.message;
+      });
+
+      return res.status(422).send({
+        ErrorMsg: "Oops! An error occurred during registration process. Please enter a valid data and try again",
+        ErrorFields,
+      });
     }
 
     next();
   };
-};
-
+}
 export default validation;
