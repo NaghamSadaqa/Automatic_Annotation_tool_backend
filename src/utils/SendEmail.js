@@ -1,20 +1,34 @@
 import nodemailer from 'nodemailer';
-const transporter = nodemailer.createTransport({
-    service:"gmail",
-    auth: {
-      user: "naghamsadaqa217@gmail.com",
-      pass: "rqlkvcvdsrejdnlt",
-    },
-  });
+import dotenv from 'dotenv';
+dotenv.config();
 
-export async function sendEmail(to, subject, body){
-  
-  const info = await transporter.sendMail({
-    from: '"Graduation Project" <naghamsadaqa217@gmail.com>', // sender address
-    to,
-    subject,
-    html:body,
-  });
-  console.log('Email sent:', info.messageId);
 
-}
+export const sendEmail = async (to, subject, html) => {
+  try {
+    // إنشاء الاتصال مع خدمة البريد
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587, 
+      secure: false, 
+      requireTLS: true, 
+      auth: {
+        user: process.env.EMAIL_USER, 
+        pass: process.env.EMAIL_PASS, 
+      },
+    });
+
+    // إرسال البريد الإلكتروني
+    await transporter.sendMail({
+      from: process.env.EMAIL,
+      to,
+      subject,
+      html,
+    });
+
+    console.log("Email sent successfully");
+
+  } catch (error) {
+    console.error("Failed to send email:", error);
+    throw error;
+  }
+};

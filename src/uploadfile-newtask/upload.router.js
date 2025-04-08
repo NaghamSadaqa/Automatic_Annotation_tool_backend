@@ -1,6 +1,6 @@
 
 
-import authenticateToken from '../middleware/auth.js';
+import {authenticateToken }from '../middleware/auth.js';
 import {Router} from 'express';
 import upload from '../utils/multer.js';
 import { asyncHandler } from '../utils/catchError.js';

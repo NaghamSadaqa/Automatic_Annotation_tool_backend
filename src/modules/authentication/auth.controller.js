@@ -138,54 +138,79 @@ export const login = async (req, res) => {
 
 
 
-
-
 //send code(forget password) هاي في حال نسيان المستخدم لكلمة المرور رح اخليه يدخل ايميله وابعتله كود
-export const sendCode =async (req,res)=>{
-    
-    const {email} = req.body;
+export const sendCode = async (req, res) => {
+  const { email } = req.body;
+  const user = await UserModel.findOne({ where: { email } });
+  if (!user) return res.status(404).json({ message: 'User not found' });
 
+  const generateCode = customAlphabet('1234567890AaBbCcDdEeFF', 6);
+  const code = generateCode();
+  const hashedCode = await bcrypt.hash(code, 8);
+
+  await UserModel.update({
+    sendCode: hashedCode,
+  }, { where: { email } });
+
+  const html = `<h3>Your password reset code is: <b>${code}</b></h3>`;
+  await sendEmail(email, "Reset Password Code", html);
+
+  // إصدار توكن يحتوي على الإيميل فقط
+  const token = jwt.sign({ email }, process.env.JWT_SECRET);
+
+  return res.status(200).json({
+    message: "Code sent successfully",
+    token
+  });
+};
+
+//هون رح تيجيله شاشة يدخل فيها الكود حتى نتأكد منه 
+export const verifyCode = async (req, res) => {
+  const { code } = req.body; // فقط الكود من body
+  const email = req.user.email; // من التوكن بعد الميدل وير
+
+  try {
     const user = await UserModel.findOne({ where: { email } });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const generateCode = customAlphabet('1234567890abcdefABCD', 4);
-    const code = generateCode(); // شفري الكود نغم
-    const hashcode = bcrypt.hashSync(code,8);
+    const isCodeValid = await bcrypt.compare(code, user.sendCode);
+    if (!isCodeValid) return res.status(400).json({ message: 'Invalid code' });
 
-    await UserModel.update({ sendCode: code }, { where: { email } });
-
-    const html = `<h2>code is ${code}</h2>`;
-    console.log(email, html);
-    await sendEmail(email,"resetPassword", html);
-    console.log("sendEmail function:", typeof sendEmail);
-    return res.status(200).json({message:"Code sent successfully"});
-
+    return res.status(200).json({ message: 'Code verified successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error' });
+  }
 };
 
 
-// بعدها منخليه يرجع يعين كلمة السر من جديد ويدخل الكود حتى نتأكد انه هو
-export const resetPassword= async (req,res)=>{
+// هون بحدث كلمة المرور وهيك جاهز 
+export const resetPassword = async (req, res) => {
+  const { newPassword, confirmPassword } = req.body;
 
-    const {email,code,password} = req.body;
-    console.log("code");
+  // التحقق من التوكن باستخدام الميدل وير
+  const email = req.user.email; // استخرج الإيميل من الـ user الموجود في req بعد التحقق من التوكن
 
-    const user = await UserModel.findOne({where:{email}});
-     if(!user){
-      return res.status(404).json({error:"User not found!"});
-     }
-     if(user.sendCode !== code){
-      return res.status(404).json({error:"invalid code"});
-     }
-    const hashedPassword= await bcrypt.hash(password,8);
-    user.password= hashedPassword;
-    user.sendCode=null;
-    await user.save();
-    res.status(200).json({message:"Password reset successfully!"});
+  // التأكد من تطابق كلمة المرور الجديدة مع التأكيد
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: 'Passwords do not match' });
+  }
+
+  // تشفير كلمة المرور الجديدة
+  const hashedPassword = await bcrypt.hash(newPassword, 8);
+
+  try {
+    // تحديث كلمة المرور في قاعدة البيانات
+    await UserModel.update(
+      { password: hashedPassword },
+      { where: { email } }
+    );
+    await UserModel.update(
+      { sendCode: null },
+      { where: { email } }
+    );
+
+    return res.status(200).json({ message: 'Password reset successfully' });
+  } catch (error) {
+    return res.status(400).json({ message: 'Error resetting password' });
+  }
 };
-// ثلث مراحل حتى اعمل استعادة لكلمة المرور , 
-//المرحلة الاولى : دخل ايميلك ببعتلك كود وبخزن الكود بالداتا بيس وبرسله توكين فيه الايميل 
-// وهو حاليا بعده عن ارسال الايميل
-// يعني صار اليوزر موديلي توكين اعرف مين اليوزر الي بده يغير ايميله
-// بعدها المستخدم بنتقل للمرحلة الثانية بدخل الكود هاد كله بال api تبع ارسال الكود
-//  الخطوة الثانية: الابي اي تبع الريست بعد ما وصلني التوكين صحيح وبعد ما دخل الكود ودخل التوكين تبعه وطلع صحيح برجعله ريسبونس فاضي انه خلص لوج ان 
-//المرحلة الثالثة : بظهر للمستخدم باسوورد جديد وكونفيرم لهاد النيو باسوورد 

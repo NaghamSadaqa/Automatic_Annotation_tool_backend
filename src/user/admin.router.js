@@ -1,4 +1,4 @@
-import authenticateToken from '../middleware/auth.js';
+import {authenticateToken} from '../middleware/auth.js';
 import UserModel from "../../DB/model/user.js";
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';

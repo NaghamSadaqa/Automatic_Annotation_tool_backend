@@ -1,5 +1,5 @@
 import express from 'express';
-import authenticateToken from '../middleware/auth.js';
+import {authenticateToken} from '../middleware/auth.js';
 import { asyncHandler } from '../utils/catchError.js';
 import { getAllSentences, getSentenceByid, processAndSave } from './sentence.controller.js';
 
