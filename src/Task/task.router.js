@@ -3,10 +3,10 @@ const router = express.Router();
 
 
 import {authenticateToken} from '../middleware/auth.js';
-import {newCollaborator} from './task.controller.js';
+import {sendinvitation} from './task.controller.js';
 import {search} from './task.controller.js';
 
-router.post("/:task_id/invite", authenticateToken , newCollaborator);
+router.post("/:task_id/invite", authenticateToken , sendinvitation);
 router.get("/search",search)
 
 
