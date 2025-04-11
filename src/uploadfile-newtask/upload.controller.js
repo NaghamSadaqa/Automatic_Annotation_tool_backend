@@ -11,7 +11,7 @@ export const uploadFile = async (req, res) => {
     if (!req.file) {
         return next(new AppError("A valid file must be uploaded", 400));
     }
-    // نغم هاي ملاحظة الك ممكن تفصلي انشاء المهمة عن تخزين معلومات الملف 
+    
 
     //   إنشاء مهمة جديدة في AnnotationTaskModel
     const newTask = await AnnotationTaskModel.create({

@@ -10,7 +10,7 @@ import { AppError } from '../../utils/AppError.js';
 dotenv.config();
 
  //register 
- export const register = async (req, res, next) => {
+ export const register = async (req, res) => {
   try {
     const { userName, email, password, confirmPassword, dateofbirth } = req.body;
 
@@ -96,7 +96,7 @@ export const login = async (req, res) => {
     const user = await UserModel.findOne({ where: { email } });
 
     if (!user) {
-      return res.status(404).send({
+      return res.status(401).send({
         ErrorMsg: "Incorrect Email or password",
         ErrorFields: null
       });
@@ -142,7 +142,13 @@ export const login = async (req, res) => {
 export const sendCode = async (req, res) => {
   const { email } = req.body;
   const user = await UserModel.findOne({ where: { email } });
-  if (!user) return res.status(404).json({ message: 'User not found' });
+  if (!user) {
+    return res.status(401).send({
+      ErrorMsg: "Incorrect Email ",
+      ErrorFields: null
+    });
+  }
+
 
   const generateCode = customAlphabet('1234567890AaBbCcDdEeFF', 6);
   const code = generateCode();
@@ -214,3 +220,8 @@ export const resetPassword = async (req, res) => {
     return res.status(400).json({ message: 'Error resetting password' });
   }
 };
+
+//log out
+//router.post("/logout", authenticateToken, (req, res) => {
+ // return res.status(200).json({ message: "تم تسجيل الخروج بنجاح" });
+//});
