@@ -2,6 +2,50 @@ import express from "express";
 import TaskCollaborator from "../../DB/model/taskcollaborator.js";
 import AnnotationTaskModel from "../../DB/model/annotationtask.js";
 import {authenticateToken} from "../middleware/auth.js";
+import UserModel from "../../DB/model/user.js";
+import { Op } from "sequelize";
+
+ export const search = async (req, res) => {
+  const { query } = req.query;
+
+  if (!query || query.trim() === "") {
+    return res.status(400).send({
+      ErrorMsg: "Please provide a valid search query.",
+      ErrorFields: {
+        query: "Query field is required."
+      }
+    });
+  }
+
+  try {
+    const users = await UserModel.findAll({
+      where: {
+        email: {
+          [Op.like]: `${query}%`  
+        },
+        is_deleted: false,
+      },
+      attributes: ['email','userName','user_id'],  
+      limit: 10
+    });
+
+    const response = users.map(user =>({
+      user_id: user.user_id,
+      email: user.email,
+      name: user.userName
+    }));  
+      res.json(response);  
+    } catch (error) {
+      console.error(error);
+      return res.status(500).send({
+        ErrorMsg: "Oops! Something went wrong while searching. Please try again later.",
+        ErrorFields: null
+      });
+    }
+  };
+
+
+
 
 // ملاحظة الي : ممكن اضيف شغلة انه المستخدمين الثانيين يوافقو على الدعوة للمشاركة بالمهمة او لا رح يتم معالجتها في حال غيرنا 
  export const newCollaborator= async (req, res) => {
@@ -46,5 +90,8 @@ import {authenticateToken} from "../middleware/auth.js";
     return res.status(500).json({ error: "Server error while inviting users." });
   }
 }
+
+
+
 
 
