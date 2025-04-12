@@ -16,14 +16,17 @@ const TaskCollaboratorModel = sequelize.define("TaskCollaborator", {
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-  }
+  },
+
 });
 
-// العلاقات
-AnnotationTaskModel.hasMany(TaskCollaboratorModel, { foreignKey: "task_id" });
-TaskCollaboratorModel.belongsTo(AnnotationTaskModel, { foreignKey: "task_id" });
 
-UserModel.hasMany(TaskCollaboratorModel, { foreignKey: "user_id" });
-TaskCollaboratorModel.belongsTo(UserModel, { foreignKey: "user_id" });
+// العلاقات
+AnnotationTaskModel.hasMany(TaskCollaboratorModel, { foreignKey: "task_id", as: "Collaborators" });
+TaskCollaboratorModel.belongsTo(AnnotationTaskModel, { foreignKey: "task_id", as: "Task" });
+
+
+UserModel.hasMany(TaskCollaboratorModel, { foreignKey: "user_id", as: "Tasks" });
+TaskCollaboratorModel.belongsTo(UserModel, { foreignKey: "user_id", as: "Collaborator" });
 
 export default TaskCollaboratorModel;

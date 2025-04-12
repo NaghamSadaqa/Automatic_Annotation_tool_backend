@@ -159,4 +159,64 @@ export const reject = async (req, res) => {
 
 
 
+//
+
+
+export const people_with_access = async (req, res) => {
+  const { task_id } = req.params;
+
+  try {
+    // 1. تأكد من وجود المهمة
+    const task = await AnnotationTaskModel.findByPk(task_id, {
+      include: {
+        model: UserModel,
+        as: 'Owner',
+        attributes: ['user_id', 'userName', 'email']
+      }
+    });
+
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    // 2. جيب الـ collaborators من جدول العلاقة
+    const collaborators = await TaskCollaboratorModel.findAll({
+      where: { task_id },
+      include: {
+        model: UserModel,
+        as: 'Collaborator',
+        attributes: ['user_id', 'userName', 'email']
+      }
+    });
+
+    // 3. رجعهم بالاستجابة
+    const collaboratorsList = collaborators.map(c => ({
+      user_id: c.Collaborator.user_id,
+      name: c.Collaborator.userName,
+      email: c.Collaborator.email,
+      role: 'collaborator'// هاد ثابت لانه معروف انه هو مشارك 
+    }));
+
+    const ownerInfo = {
+      user_id: task.Owner.user_id,
+      name: task.Owner.userName,
+      email: task.Owner.email,
+      role: 'owner' // وهاد ثابت لانه هو الي عمل المهمة 
+    };
+
+    return res.status(200).json({
+      task_id: task.task_id,
+      people_with_access: [ownerInfo, ...collaboratorsList]
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+
+
+
+
+
 

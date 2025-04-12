@@ -26,7 +26,7 @@ const AnnotationTaskModel = sequelize.define("AnnotationTask", {
   
    
 });
-UserModel.hasMany(AnnotationTaskModel, { foreignKey: "created_by" });
-AnnotationTaskModel.belongsTo(UserModel, { foreignKey: "created_by", onDelete: "SET NULL" });
+UserModel.hasMany(AnnotationTaskModel, { foreignKey: "created_by" , as: "OwnedTasks" });
+AnnotationTaskModel.belongsTo(UserModel, { foreignKey: "created_by",as: "Owner" ,onDelete: "SET NULL" });
 
 export default AnnotationTaskModel;
