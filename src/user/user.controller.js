@@ -4,7 +4,7 @@ import TaskCollaboratorModel from '../../DB/model/taskcollaborator.js'
 const router = express.Router();
 
 export const owntasks = async (req, res) => {
-  const { user_id } = req.params;
+  const { user_id } = req.user;
 
   try {
     const ownedTasks = await AnnotationTaskModel.findAll({
@@ -21,7 +21,7 @@ export const owntasks = async (req, res) => {
 
 
 export const taskcollaborator = async (req, res) => {
-    const { user_id } = req.params;
+    const { user_id } = req.user;
   
     try {
       const collaborations = await TaskCollaboratorModel.findAll({

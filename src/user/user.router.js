@@ -5,6 +5,6 @@ import {owntasks, taskcollaborator} from './user.controller.js';
 
 
 
-router.get('/:user_id/owned-tasks',owntasks);
-router.get('/:user_id/collaborated-tasks',taskcollaborator)
+router.get('/owned-tasks',authenticateToken,owntasks);
+router.get('/collaborated-tasks',authenticateToken,taskcollaborator)
 export default router;
