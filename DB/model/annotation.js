@@ -2,7 +2,7 @@ import  { Sequelize, DataTypes } from 'sequelize';
 import  {sequelize} from '../connection.js';
 import UserModel from './user.js';
 import SentenceModel from './sentence.js'
-
+import AnnotationTaskModel from './annotationtask.js';
 const AnnotationModel = sequelize.define("Annotation", {
     annotation_id: {
         type: DataTypes.INTEGER,
@@ -20,5 +20,8 @@ AnnotationModel.belongsTo(SentenceModel, { foreignKey: "sentence_id", onDelete: 
 
 UserModel.hasMany(AnnotationModel, { foreignKey: "annotator_id" });
 AnnotationModel.belongsTo(UserModel, { foreignKey: "annotator_id", onDelete: "CASCADE" });
+
+AnnotationTaskModel.hasMany(AnnotationModel, { foreignKey: "task_id" });
+AnnotationModel.belongsTo(AnnotationTaskModel, { foreignKey: "task_id", onDelete: "CASCADE" });
 
 export default AnnotationModel;

@@ -4,6 +4,8 @@ import AnnotationTaskModel from "../../DB/model/annotationtask.js";
 import {authenticateToken} from "../middleware/auth.js";
 import UserModel from "../../DB/model/user.js";
 import InvitationModel from '../../DB/model/invitation.js';
+import AnnotationModel from "../../DB/model/annotation.js";
+import SentenceModel from "../../DB/model/sentence.js";
 import { Op } from "sequelize";
 
 // هاد عشان عملية البحث عن الايميل باول حرف بدخله
@@ -212,6 +214,70 @@ export const people_with_access = async (req, res) => {
 };
 
 
+
+// هون بدنا نجيب كل تفاصيل المهمة 
+
+export const getTaskDetails = async (req, res) => {
+  const { task_id } = req.params;
+  const annotator_id = req.user.user_id; // من التوكن بعد ما تعمل middleware
+
+  try {
+    const task = await AnnotationTaskModel.findByPk(task_id, {
+      attributes: ['task_id', 'task_name', 'task_description', 'annotation_type', 'labels', 'created_by', 'createdAt'],
+    });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // عدد الجمل الكليّة
+    const totalSentences = await SentenceModel.count({ where: { task_id } });
+
+    // كم جملة أنجزها المستخدم الحالي
+    const completedByUser = await AnnotationModel.count({
+      where: {
+        task_id,
+        annotator_id
+      }
+    });
+
+    //"حالة المهمة: إذا كل الجمل عملنالها انوتيشن من قبل الكل = "منتهية"، غير هيك = "جاري"
+    const totalAnnotations = await AnnotationModel.count({ where: { task_id } });
+    const status = totalAnnotations >= totalSentences ? "Completed" : "In Progress";
+
+    // نجيب المشاركين
+    const collaborators = await TaskCollaboratorModel.findAll({
+      where: { task_id },
+      include: [{
+        model: UserModel,
+        as: "Collaborator",
+        attributes: ['user_id', 'userName', 'email']
+      }]
+    });
+
+    const collaboratorList = collaborators.map(col => ({
+      user_id: col.Collaborator.user_id,
+      name: col.Collaborator.userName,
+      email: col.Collaborator.email
+    }));
+
+    return res.status(200).json({
+      task_id: task.task_id,
+      task_name: task.task_name,
+      task_description: task.task_description,
+      annotation_type: task.annotation_type,
+      labels: task.labels.split(','),
+      total_sentences: totalSentences,
+      completed_by_user: completedByUser,
+      status,
+      collaborators: collaboratorList
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 
 
