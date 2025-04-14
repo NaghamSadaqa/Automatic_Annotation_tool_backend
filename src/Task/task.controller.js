@@ -37,7 +37,7 @@ export const search = async (req, res) => {
         email: {
           [Op.like]: `${query}%`,
         },
-        is_deleted: false,
+        is_deleted: 0,
         user_id: {
           [Op.notIn]: sharedUserIds,
         }
@@ -316,6 +316,53 @@ export const getTaskDetails = async (req, res) => {
   }
 };
 
+
+
+// حذف المهمة من قبل اليوزر الي قام بانشائها
+export const deleteTask = async (req, res) => {
+  const { task_id } = req.params;
+  const user_id = req.user.user_id; // جاي من التوكن
+
+  try {
+    // نجيب المهمة
+    const task = await AnnotationTaskModel.findOne({
+      where: {
+        task_id,
+        is_deleted: 0
+      }
+    });
+
+    if (!task) {
+      return res.status(404).send({
+        ErrorMsg: "Task not found.",
+        ErrorFields: null
+      });
+    }
+
+    // نتأكد إن المستخدم هو صاحب المهمة
+    if (task.created_by !== user_id) {
+      return res.status(403).send({
+        ErrorMsg: "You are not authorized to delete this task.",
+        ErrorFields: null
+      });
+    }
+
+    // نحذف المهمة 
+    task.is_deleted = 1;
+    await task.save();
+
+    return res.status(200).send({
+      message: "Task deleted successfully."
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send({
+      ErrorMsg: "Oops, an error occurred during the process. Try again.",
+      ErrorFields: null
+    });
+  }
+};
 
 
 
