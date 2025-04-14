@@ -9,81 +9,118 @@ import SentenceModel from "../../DB/model/sentence.js";
 import { Op } from "sequelize";
 
 // هاد عشان عملية البحث عن الايميل باول حرف بدخله
- export const search = async (req, res) => {
-  const { query } = req.query;
+export const search = async (req, res) => {
+  const { query, task_id } = req.query;
 
-  if (!query || query.trim() === "") {
+  if (!query || query.trim() === "" || !task_id) {
     return res.status(400).send({
-      ErrorMsg: "Please provide a valid search query.",
+      ErrorMsg: "Please provide a valid search query and task_id.",
       ErrorFields: {
-        query: "Query field is required."
-      }
+        query: "Query is required.",
+        task_id: "Task ID is required."
+      },
     });
   }
 
   try {
+    //  هات اليوزرز المشاركين بالتاسك
+    const sharedUsers = await TaskCollaboratorModel.findAll({
+      where: { task_id },
+      attributes: ['user_id'],
+    });
+
+    const sharedUserIds = sharedUsers.map(user => user.user_id);
+
+    // جيب فقط اليوزرز اللي مش مشاركين بالتاسك وببلشو بالايميل اللي ببحث عنه
     const users = await UserModel.findAll({
       where: {
         email: {
-          [Op.like]: `${query}%`  
+          [Op.like]: `${query}%`,
         },
         is_deleted: false,
+        user_id: {
+          [Op.notIn]: sharedUserIds,
+        }
       },
-      attributes: ['email','userName','user_id'],  
-      limit: 10
+      attributes: ['user_id', 'email', 'userName'],
+      limit: 10,
     });
 
-    const response = users.map(user =>({
+    const response = users.map(user => ({
       user_id: user.user_id,
       email: user.email,
-      name: user.userName
-    }));  
-      res.json(response);  
-    } catch (error) {
-      console.error(error);
-      return res.status(500).send({
-        ErrorMsg: "Oops! Something went wrong while searching. Please try again later.",
-        ErrorFields: null
-      });
-    }
-  };
+      name: user.userName,
+    }));
+
+    res.json(response);
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      ErrorMsg: "Oops! Something went wrong while searching. Please try again later.",
+      ErrorFields: null,
+    });
+  }
+};
+
+
 
 
 
   // ارسال دعوة للمستخدمين يعملو انوتيشن على نفس التاسك
   export const sendinvitation= async (req, res) => {
     const { task_id } = req.params;
-    const { email, message } = req.body;
+    const { selectedUsers, message } = req.body;
     const sender_id = req.user.user_id;
+  
+    if (!Array.isArray(selectedUsers) || selectedUsers.length === 0) {
+      return res.status(400).send({
+        ErrorMsg: "No users selected for invitation.",
+        ErrorFields: {
+          selectedUsers: "Please select at least one user."
+        }
+      });
+    }
   
     try {
       const task = await AnnotationTaskModel.findByPk(task_id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        return res.status(404).send({
+          ErrorMsg: "Task not found.",
+          ErrorFields: null
+        });
+      }
   
-      const receiver = await UserModel.findOne({ where: { email, is_deleted: false } });
-      if (!receiver) return res.status(404).json({ message: "User not found" });
+      for (const email of selectedUsers) {
+        const receiver = await UserModel.findOne({ where: { email, is_deleted: false } });
+        if (!receiver) continue;
   
-      const alreadyInvited = await InvitationModel.findOne({
-        where: {
+        const alreadyInvited = await InvitationModel.findOne({
+          where: {
+            task_id,
+            receiver_id: receiver.user_id,
+            status: 'pending'
+          }
+        });
+  
+        if (alreadyInvited) continue;
+  
+        await InvitationModel.create({
           task_id,
+          sender_id,
           receiver_id: receiver.user_id,
-          status: 'pending'
-        }
-      });
+          message
+        });
+      }
   
-      if (alreadyInvited) return res.status(400).json({ message: "User already invited" });
+      return res.status(200).json({ message: "Invitations sent successfully" });
   
-      await InvitationModel.create({
-        task_id,
-        sender_id,
-        receiver_id: receiver.user_id,
-        message,
-      });
-  
-      return res.status(200).json({ message: "Invitation sent successfully" });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ message: "Internal Server Error" });
+      return res.status(500).send({
+        ErrorMsg: "Oops, an error occurred during the process, try again.",
+        ErrorFields: null
+      });
     }
   };
 
@@ -108,13 +145,13 @@ import { Op } from "sequelize";
       return res.status(404).json({ message: "Invitation not found or already processed" });
     }
 
-    // Create TaskCollaborator entry
+    
     await TaskCollaboratorModel.create({
       task_id: invitation.task_id,
       user_id: receiver_id
     });
 
-    // Update invitation status
+    
     invitation.status = 'accepted';
     await invitation.save();
 
