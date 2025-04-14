@@ -252,6 +252,8 @@ export const people_with_access = async (req, res) => {
 
 
 
+
+
 // هون بدنا نجيب كل تفاصيل المهمة 
 
 export const getTaskDetails = async (req, res) => {
@@ -266,6 +268,16 @@ export const getTaskDetails = async (req, res) => {
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
+   // مرحلة التأكد انه هل اليوزر مشارك بالمهمة او مالك الها اذا لا مش مسموح يشوف المهمة وتفاصيلها
+    const isOwner = task.created_by === annotator_id;
+
+    const isCollaborator = await TaskCollaboratorModel.findOne({
+      where: { task_id, user_id: annotator_id }
+    });
+
+    if (!isOwner && !isCollaborator) {
+      return res.status(403).json({ message: 'Access denied: You are not authorized to view this task.' });
+    } // سألت الفرونت عنها رح نشوف نخليها او كيف
 
     // عدد الجمل الكليّة
     const totalSentences = await SentenceModel.count({ where: { task_id } });
@@ -318,6 +330,8 @@ export const getTaskDetails = async (req, res) => {
 
 
 
+
+
 // حذف المهمة من قبل اليوزر الي قام بانشائها
 export const deleteTask = async (req, res) => {
   const { task_id } = req.params;
@@ -363,6 +377,37 @@ export const deleteTask = async (req, res) => {
     });
   }
 };
+
+
+
+// هون بدي اعمل api 
+// يرجعلي اول جملة مش مصنفة من قبل اليوزر لنفس المهمة
+export const UnannotatedSentence = async (req, res) => {
+  try {
+    const task_id = req.params.taskId;
+    const annotator_id = req.user.user_id; // من المستخدم المسجل دخوله
+
+    const sentence = await SentenceModel.findOne({
+      where: { task_id },
+      include: [{
+        model: AnnotationModel,
+        required: false, // يعني حتى لو ما في أنوتيشن برجع الجملة
+        where: { annotator_id },
+      }],
+    });
+
+    // إذا رجعت الجملة وكان إلها أنوتيشن من نفس المستخدم، نكمل نبحث عن وحدة غيرها
+    if (!sentence || sentence.Annotations.length > 0) {
+      return res.status(404).json({ message: 'No unannotated sentences found.' });
+    }
+
+    res.json(sentence);
+  } catch (error) {
+    console.error('Error fetching unannotated sentence:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 
 
 
