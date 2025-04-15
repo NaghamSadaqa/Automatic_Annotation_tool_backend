@@ -11,6 +11,7 @@ import TaskCollaboratorModel from '../DB/model/taskcollaborator.js';
 import sentenceRouter from './sentence/sentence.router.js';
 import userRouter from './user/user.router.js';
 import taskRouter from './Task/task.router.js';
+import annotationRouter from './annotation/annotation.router.js';
 import { globalErrorHandler } from './middleware/globalErrorHandler.js';
 
 const initApp = (app,express)=>{
@@ -22,6 +23,7 @@ const initApp = (app,express)=>{
     app.use('/sentence',sentenceRouter);
     app.use('/tasks',taskRouter);
     app.use('/users',userRouter);
+    app.use('/annotation',annotationRouter)
     //app.use('/admin',adminRouter);
 
     app.use(globalErrorHandler);

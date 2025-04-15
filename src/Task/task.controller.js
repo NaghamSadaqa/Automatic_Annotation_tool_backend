@@ -71,6 +71,7 @@ export const search = async (req, res) => {
   export const sendinvitation= async (req, res) => {
     const { task_id } = req.params;
     const { selectedUsers, message } = req.body;
+    console.log("Message:", message);
     const sender_id = req.user.user_id;
   
     if (!Array.isArray(selectedUsers) || selectedUsers.length === 0) {
@@ -109,7 +110,7 @@ export const search = async (req, res) => {
           task_id,
           sender_id,
           receiver_id: receiver.user_id,
-          message
+          message 
         });
       }
   
