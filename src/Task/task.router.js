@@ -13,5 +13,5 @@ router.post("/invitations/:invitation_id/reject",  authenticateToken , reject);
 router.get("/:task_id/collaborators",authenticateToken ,people_with_access);
 router.get("/:task_id/details",authenticateToken ,getTaskDetails);
 router.delete('/:task_id', authenticateToken, deleteTask);
-router.get('/:taskId/sentences/unannotated',authenticateToken , UnannotatedSentence);
+router.get('/:task_id/sentences/unannotated',authenticateToken , UnannotatedSentence);
 export default router;

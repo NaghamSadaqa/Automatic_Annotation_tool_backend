@@ -384,30 +384,41 @@ export const deleteTask = async (req, res) => {
 // هون بدي اعمل api 
 // يرجعلي اول جملة مش مصنفة من قبل اليوزر لنفس المهمة
 export const UnannotatedSentence = async (req, res) => {
-  try {
-    const task_id = req.params.taskId;
-    const annotator_id = req.user.user_id; // من المستخدم المسجل دخوله
-
-    const sentence = await SentenceModel.findOne({
-      where: { task_id },
-      include: [{
-        model: AnnotationModel,
-        required: false, // يعني حتى لو ما في أنوتيشن برجع الجملة
-        where: { annotator_id },
-      }],
-    });
-
-    // إذا رجعت الجملة وكان إلها أنوتيشن من نفس المستخدم، نكمل نبحث عن وحدة غيرها
-    if (!sentence || sentence.Annotations.length > 0) {
-      return res.status(404).json({ message: 'No unannotated sentences found.' });
+ 
+    try {
+      const task_id = req.params.task_id;
+      const annotator_id = req.user.user_id;
+  
+      // 1. جلب قائمة معرفات الجمل التي صنفها المستخدم في هذا التاسك
+      const annotated = await AnnotationModel.findAll({
+        where: { task_id, annotator_id },
+        attributes: ['sentence_id']
+      });
+  
+      // 2. تحويل النتائج لمصفوفة معرفات فقط
+      const annotatedIds = annotated.map(a => a.sentence_id);
+  
+      // 3. جلب أول جملة غير مصنفة من قبل هذا المستخدم
+      const nextSentence = await SentenceModel.findOne({
+        where: {
+          task_id,
+          sentence_id: { [Op.notIn]: annotatedIds }
+        },
+        order: [['sentence_id', 'ASC']]
+      });
+  
+      // 4. التحقق من وجود جملة
+      if (!nextSentence) {
+        return res.status(404).json({ message: 'No unannotated sentences found.' });
+      }
+  
+      res.json(nextSentence);
+  
+    } catch (error) {
+      console.error('Error fetching unannotated sentence:', error);
+      res.status(500).json({ message: 'Server error' });
     }
-
-    res.json(sentence);
-  } catch (error) {
-    console.error('Error fetching unannotated sentence:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+  };
 
 
 
