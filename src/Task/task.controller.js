@@ -408,11 +408,6 @@ export const UnannotatedSentence = async (req, res) => {
         order: [['sentence_id', 'ASC']] // ارجع الجمل مرتبات بناء على رقم الجملة وتصاعديا من الصغير للكبر 
       });
   
-      
-      if (!nextSentence) {
-        return res.status(404).json({ message: 'No unannotated sentences found.' });// هون بكون خلص كل الجمل وما ضل جمل جديدة نصنفها داخل التاسك
-      }
-  
       res.json(nextSentence);
   
     } catch (error) {

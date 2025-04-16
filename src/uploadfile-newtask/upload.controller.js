@@ -36,9 +36,9 @@ export const uploadFile = async (req, res, next) => {
     });
 
     const filePath = req.file.path;
-    let sentences = [];
     let fileExtension = req.file.originalname.split('.').pop().toLowerCase();
-
+    
+    let sentences = [];
     const findColumnName = (columns, possibleNames) => {
         return columns.find(col => 
             possibleNames.some(name => col.toLowerCase().includes(name.toLowerCase()))
