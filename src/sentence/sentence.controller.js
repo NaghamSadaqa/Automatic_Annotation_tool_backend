@@ -8,96 +8,6 @@ import { AppError } from '../utils/AppError.js';
 
 
 
-// Helper function to find a column name regardless of case
-const findColumnName = (columns, possibleNames) => {
-    return columns.find(col => possibleNames.includes(col.toLowerCase())) || null;
-};
-
-export const processAndSave =async (req, res) => {
-    
-    const { filePath } = req.query;
-
-    if (!filePath) {
-        return next(new AppError("File path is required!", 400));
-    }
-
-    if (!fs.existsSync(filePath)) {
-        return next(new AppError("File not found!", 404));
-    }
-
-    const fileRecord = await FileManager.findOne({ where: { file_path: filePath } });
-    if (!fileRecord) {
-        return next(new AppError("File not found in database!", 404));
-    }
-    const task_id = fileRecord.task_id;
-
-    let sentences = [];
-    let fileExtension = filePath.split(".").pop();
-
-    if (fileExtension === "csv") {
-        await new Promise((resolve, reject) => {
-            let headersProcessed = false;
-            let sentenceCol = null;
-            let idCol = null;
-            
-            fs.createReadStream(filePath)
-                .pipe(csvParser())
-                .on("data", (row) => {
-                    if (!headersProcessed) {
-                        const columns = Object.keys(row);
-                        sentenceCol = findColumnName(columns, ["sentence", "text", "content"]);
-                        idCol = findColumnName(columns, ["id", "row", "row number","index"]);
-                        headersProcessed = true;
-                    }
-
-                    if (sentenceCol) {
-                        const sentence = row[sentenceCol];
-                        const originalFileRowId = idCol ? row[idCol] : null;
-                        
-                        if (sentence) {
-                            sentences.push({ sentence_text: sentence, task_id, original_file_row_id: originalFileRowId });
-                        }
-                    }
-                })
-                .on("end", resolve)
-                .on("error", reject);
-        });
-    } else if (fileExtension === "xlsx") {
-        const workbook = xlsx.readFile(filePath);
-        const sheetName = workbook.SheetNames[0];
-        const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-        
-        if (sheetData.length > 0) {
-            const columns = Object.keys(sheetData[0]);
-            const sentenceCol = findColumnName(columns, ["sentence", "text", "content"]);
-            const idCol = findColumnName(columns, ["id", "row", "row number","index"]);
-            
-            sentences = sheetData
-                .map(row => ({
-                    sentence_text: sentenceCol ? row[sentenceCol] : null,
-                    original_file_row_id: idCol ? row[idCol] : null,
-                    task_id
-                }))
-                .filter(entry => entry.sentence_text); // Remove empty sentences
-        }
-    } else {
-        return next(new AppError("Invalid file format. Use CSV or Excel.", 400));
-    }
-
-    if (sentences.length === 0) {
-        return next(new AppError("No valid sentences found in the file!", 400));
-    }
-
-    // Save sentences to database
-    const savedSentences = await SentenceModel.bulkCreate(sentences);
-
-    res.status(201).json({
-        message: `Successfully saved ${savedSentences.length} sentences!`,
-        sentences: savedSentences.map(s => s.sentence_text)
-    });
-
-};
-
 // api بنعرض من خلاله كل ما يتعلق بتيبل الجمل 
  export  const getAllSentences = async (req, res) => {
     
@@ -117,7 +27,8 @@ export const getSentenceByid = async (req, res) => {
 
 };
 
-
+// هدول اخر 2 
+// رح نستخدمهم لعرض الجمل التابعة لتاسك معين 
 export const getSentencesByTask = async (req, res) => {
     try {
       const task_id = req.params.task_id;
