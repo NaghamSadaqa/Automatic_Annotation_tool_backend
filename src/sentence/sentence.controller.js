@@ -116,3 +116,49 @@ export const getSentenceByid = async (req, res) => {
     return res.status(200).json(sentence);
 
 };
+
+
+export const getSentencesByTask = async (req, res) => {
+    try {
+      const task_id = req.params.task_id;
+  
+      const sentences = await SentenceModel.findAll({
+        where: { task_id: task_id },
+        order: [['sentence_id', 'ASC']],
+      });
+  
+      if (!sentences || sentences.length === 0) {
+        return res.status(404).json({ message: 'No sentences found for this task.' });
+      }
+  
+      res.json(sentences);
+    } catch (error) {
+      console.error('Error fetching sentences by task:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  };
+
+
+
+  export const getSentenceTextsByTask = async (req, res) => {
+    try {
+      const task_id = req.params.task_id;
+  
+      const sentences = await SentenceModel.findAll({
+        where: { task_id: task_id },
+        attributes: ['sentence_text'], // فقط النص
+        order: [['sentence_id', 'ASC']],
+      });
+  
+      if (!sentences || sentences.length === 0) {
+        return res.status(404).json({ message: 'No sentences found for this task.' });
+      }
+  
+      res.json(sentences);
+    } catch (error) {
+      console.error('Error fetching sentence texts by task:', error);
+      res.status(500).json({ message: 'Server error' })
+    }
+}; // الفرق بين هاد api 
+  // والي قبله انه هاد برجع بس الجمل للتاسك المعينة 
+  // اما الي فوق برجع كلشي عن الجمل من رقمها وباي صف مجودة وغيرها اختارو الي بدكم ترجعوه منهم

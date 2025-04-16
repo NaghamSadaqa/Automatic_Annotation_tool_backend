@@ -388,28 +388,29 @@ export const UnannotatedSentence = async (req, res) => {
     try {
       const task_id = req.params.task_id;
       const annotator_id = req.user.user_id;
-  
-      // 1. جلب قائمة معرفات الجمل التي صنفها المستخدم في هذا التاسك
+      // اول اشي جبت الجمل المصنفة من قبل هاد الانوتيتر الي مسجل دخوله وبده يبلش يصنف
       const annotated = await AnnotationModel.findAll({
         where: { task_id, annotator_id },
         attributes: ['sentence_id']
       });
   
-      // 2. تحويل النتائج لمصفوفة معرفات فقط
+      // حطيت id 
+      // الجمل داخل متغير
+
       const annotatedIds = annotated.map(a => a.sentence_id);
   
-      // 3. جلب أول جملة غير مصنفة من قبل هذا المستخدم
+      //  جلب أول جملة غير مصنفة من قبل هذا المستخدم
       const nextSentence = await SentenceModel.findOne({
         where: {
           task_id,
-          sentence_id: { [Op.notIn]: annotatedIds }
+          sentence_id: { [Op.notIn]: annotatedIds } // هاد الشرط بجيب الجملة الي مش مصنفة
         },
-        order: [['sentence_id', 'ASC']]
+        order: [['sentence_id', 'ASC']] // ارجع الجمل مرتبات بناء على رقم الجملة وتصاعديا من الصغير للكبر 
       });
   
-      // 4. التحقق من وجود جملة
+      
       if (!nextSentence) {
-        return res.status(404).json({ message: 'No unannotated sentences found.' });
+        return res.status(404).json({ message: 'No unannotated sentences found.' });// هون بكون خلص كل الجمل وما ضل جمل جديدة نصنفها داخل التاسك
       }
   
       res.json(nextSentence);
