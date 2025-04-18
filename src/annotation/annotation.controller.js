@@ -37,11 +37,22 @@ export const annotateSentence = async( req,res)=>{
       const count = await AnnotationModel.count({
         where: {
           task_id,
-          annotator_id
+          annotator_id,
+          label: {
+            [Op.ne]: 'none'   // لا تساوي "none" // not equal
+          }
+        }
+      });
+
+      const skippedCount = await AnnotationModel.count({
+        where: {
+          task_id,
+          annotator_id,
+          label: 'none'
         }
       });
   
-      res.status(201).json({ message: "Annotation saved successfully." , annotatedCount: count });
+      res.status(201).json({ message: "Annotation saved successfully." , annotatedCount: count , skippedCount:skippedCount });
   
     } catch (error) {
       console.error("Error saving annotation:", error);
@@ -129,6 +140,39 @@ export const updateAnnotation = async (req, res) => {
 
   } catch (error) {
     console.error('Update annotation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+
+// هون بعرض الجمل الي صنفها المستخدم مغ التصنيف 
+export const  getAnnotatedSentences = async (req, res) => {
+  try {
+    const { task_id } = req.params;
+    const annotator_id = req.user.user_id;
+
+    const annotations = await AnnotationModel.findAll({
+      where: { task_id, annotator_id },
+      include: [
+        {
+          model: SentenceModel,
+          attributes: ['sentence_id', 'sentence_text']
+        }
+      ],
+      attributes: ['label']
+    });
+
+    const formatted = annotations.map(annotation => ({
+      sentence_id: annotation.SentenceModel.sentence_id,
+      text: annotation.SentenceModel.sentence_text,
+      label: annotation.label
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Error fetching annotated sentences:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
