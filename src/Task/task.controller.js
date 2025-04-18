@@ -310,7 +310,24 @@ export const getTaskDetails = async (req, res) => {
       name: col.Collaborator.userName,
       email: col.Collaborator.email
     }));
+    const annotatedCount = await AnnotationModel.count({
+      where: {
+        task_id,
+        annotator_id,
+        label: {
+          [Op.ne]: 'none'  // not equal
+        }
+      }
+    });
 
+    // عدد الجمل التي تم عمل skip لها
+    const skippedCount = await AnnotationModel.count({
+      where: {
+        task_id,
+        annotator_id,
+        label: 'none'
+      }
+    });
     return res.status(200).json({
       task_id: task.task_id,
       task_name: task.task_name,
@@ -320,7 +337,9 @@ export const getTaskDetails = async (req, res) => {
       total_sentences: totalSentences,
       completed_by_user: completedByUser,
       status,
-      collaborators: collaboratorList
+      collaborators: collaboratorList,
+      annotatedCount,
+      skippedCount
     });
 
   } catch (error) {
@@ -407,8 +426,27 @@ export const UnannotatedSentence = async (req, res) => {
         },
         order: [['sentence_id', 'ASC']] // ارجع الجمل مرتبات بناء على رقم الجملة وتصاعديا من الصغير للكبر 
       });
+
+      const annotatedCount = await AnnotationModel.count({
+        where: {
+          task_id,
+          annotator_id,
+          label: {
+            [Op.ne]: 'none'  // not equal
+          }
+        }
+      });
   
-      res.json(nextSentence);
+      // عدد الجمل التي تم عمل skip لها
+      const skippedCount = await AnnotationModel.count({
+        where: {
+          task_id,
+          annotator_id,
+          label: 'none'
+        }
+      });
+  
+      res.json({nextSentence,annotatedCount,skippedCount});
   
     } catch (error) {
       console.error('Error fetching unannotated sentence:', error);
