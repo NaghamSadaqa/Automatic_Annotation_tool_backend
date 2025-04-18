@@ -23,7 +23,7 @@ export const annotateSentence = async( req,res)=>{
       });
   
       if (existingAnnotation) {
-        return res.status(400).json({ message: "You already annotated this sentence." });
+        return res.status(200).json({ message: "You already annotated this sentence." });
       }
   
       // أضف التصنيف
@@ -33,8 +33,15 @@ export const annotateSentence = async( req,res)=>{
         sentence_id,
         label
       });
+
+      const count = await AnnotationModel.count({
+        where: {
+          task_id,
+          annotator_id
+        }
+      });
   
-      res.status(201).json({ message: "Annotation saved successfully." });
+      res.status(201).json({ message: "Annotation saved successfully." , annotatedCount: count });
   
     } catch (error) {
       console.error("Error saving annotation:", error);
@@ -42,4 +49,36 @@ export const annotateSentence = async( req,res)=>{
     }
   };
 
+
+
+
+ //
+  export const getAnnotationProgress = async (req, res) => {
+    try {
+      const task_id = req.params.task_id;
+      const annotator_id = req.user.user_id;
+  
+      // احسب مجموع الجمل في التاسك
+      const totalSentences = await SentenceModel.count({
+        where: { task_id }
+      });
+  
+      // احسب كم جملة صنفها هذا المستخدم
+      const annotatedCount = await AnnotationModel.count({
+        where: {
+          task_id,
+          annotator_id
+        }
+      });
+  
+      res.status(200).json({
+        totalSentences,
+        annotatedCount
+      });
+  
+    } catch (error) {
+      console.error("Error fetching annotation progress:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
     
