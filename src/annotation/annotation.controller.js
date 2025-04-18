@@ -82,11 +82,12 @@ export const annotateSentence = async( req,res)=>{
     const totalSentences = await SentenceModel.count({ where: { task_id } });
 
     // احسب ترتيب الجملة الحالية
-    const position = await SentenceModel.count({
+    const position = await SentenceModel.count({ // بجيب عددهم كرقم
       where: {
         task_id,
-        sentence_id: { [Op.lt]: nextSentence.sentence_id }//operator (less than) ها العملية بتعني انه نجيب كل الجمل ال Id
-                                                         // الها اقل من id الجملة الحالية
+        sentence_id: { [Op.lt]: nextSentence.sentence_id }//operator (less than)  العملية بتعني انه نجيب كل الجمل ال Id
+                                                         // الها اقل من 
+                                                         // id الجملة الحالية
       }
     });
 
@@ -99,6 +100,35 @@ export const annotateSentence = async( req,res)=>{
 
   } catch (error) {
     console.error('Error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+
+export const updateAnnotation = async (req, res) => {
+  try {
+    const { task_id } = req.params;
+    const annotator_id = req.user.user_id;
+    const { sentence_id, label } = req.body;
+
+    const existingAnnotation = await AnnotationModel.findOne({
+      where: { annotator_id, task_id, sentence_id }
+    });
+
+    if (!existingAnnotation) {
+      return res.status(200).json({ message: 'Annotation not found for update' });
+    }
+
+    // Update the label
+    existingAnnotation.label = label;
+    await existingAnnotation.save();
+
+    res.json({ message: 'Annotation updated successfully' });
+
+  } catch (error) {
+    console.error('Update annotation error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
