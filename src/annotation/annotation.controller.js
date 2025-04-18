@@ -165,8 +165,8 @@ export const  getAnnotatedSentences = async (req, res) => {
     });
 
     const formatted = annotations.map(annotation => ({
-      sentence_id: annotation.SentenceModel.sentence_id,
-      text: annotation.SentenceModel.sentence_text,
+      sentence_id: annotation.Sentence.sentence_id,
+      text: annotation.Sentence.sentence_text,
       label: annotation.label
     }));
 
