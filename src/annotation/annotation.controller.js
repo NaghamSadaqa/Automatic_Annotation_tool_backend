@@ -1,7 +1,7 @@
 import SentenceModel from "../../DB/model/sentence.js";
 import AnnotationModel from "../../DB/model/annotation.js";
 import AnnotationTaskModel from "../../DB/model/annotationtask.js";
-
+import { Op } from "sequelize";
 
 
 export const annotateSentence = async( req,res)=>{
@@ -52,33 +52,54 @@ export const annotateSentence = async( req,res)=>{
 
 
 
- //
-  export const getAnnotationProgress = async (req, res) => {
-    try {
-      const task_id = req.params.task_id;
-      const annotator_id = req.user.user_id;
-  
-      // احسب مجموع الجمل في التاسك
-      const totalSentences = await SentenceModel.count({
-        where: { task_id }
-      });
-  
-      // احسب كم جملة صنفها هذا المستخدم
-      const annotatedCount = await AnnotationModel.count({
-        where: {
-          task_id,
-          annotator_id
-        }
-      });
-  
-      res.status(200).json({
-        totalSentences,
-        annotatedCount
-      });
-  
-    } catch (error) {
-      console.error("Error fetching annotation progress:", error);
-      res.status(500).json({ message: "Server error" });
-    }
-  };
+ //    هاي بتجيب موقع الجملة من اساس عدد الجمل الكلي 
+ // ورح تجيب الجملة الجاي التالية الي ما اتصنفت من قبل اليوزر 
+ export const getSentenceWithPosition = async (req, res) => {
+  try {
+    const task_id = req.params.task_id;
+    const annotator_id = req.user.user_id;
+
+    // هات الجمل المصنفة من قبل هذا المستخدم
+    const annotated = await AnnotationModel.findAll({
+      where: { task_id, annotator_id },
+      attributes: ['sentence_id']
+    });
+
+    const annotatedIds = annotated.map(a => a.sentence_id);
+
+    // هات الجملة التالية الغير مصنفة
+    const nextSentence = await SentenceModel.findOne({
+      where: {
+        task_id,
+        sentence_id: { [Op.notIn]: annotatedIds }
+      },
+      order: [['sentence_id', 'ASC']]
+    });
+
     
+
+    // عدد الجمل الكلي داخل التاسك
+    const totalSentences = await SentenceModel.count({ where: { task_id } });
+
+    // احسب ترتيب الجملة الحالية
+    const position = await SentenceModel.count({
+      where: {
+        task_id,
+        sentence_id: { [Op.lt]: nextSentence.sentence_id }//operator (less than) ها العملية بتعني انه نجيب كل الجمل ال Id
+                                                         // الها اقل من id الجملة الحالية
+      }
+    });
+
+    // position + 1 لأنه الجملة نفسها محسوبة
+    res.json({
+      sentence: nextSentence,
+      currentIndex: position + 1,
+      totalSentences
+    });
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
