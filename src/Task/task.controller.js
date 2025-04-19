@@ -400,59 +400,60 @@ export const deleteTask = async (req, res) => {
 
 
 
+
+
 // هون بدي اعمل api 
 // يرجعلي اول جملة مش مصنفة من قبل اليوزر لنفس المهمة
 export const UnannotatedSentence = async (req, res) => {
- 
-    try {
-      const task_id = req.params.task_id;
-      const annotator_id = req.user.user_id;
-      // اول اشي جبت الجمل المصنفة من قبل هاد الانوتيتر الي مسجل دخوله وبده يبلش يصنف
-      const annotated = await AnnotationModel.findAll({
-        where: { task_id, annotator_id },
-        attributes: ['sentence_id']
-      });
-  
-      // حطيت id 
-      // الجمل داخل متغير
+  try {
+    const { task_id } = req.params;
+    const annotator_id = req.user.user_id;
 
-      const annotatedIds = annotated.map(a => a.sentence_id);
-  
-      //  جلب أول جملة غير مصنفة من قبل هذا المستخدم
-      const nextSentence = await SentenceModel.findOne({
-        where: {
-          task_id,
-          sentence_id: { [Op.notIn]: annotatedIds } // هاد الشرط بجيب الجملة الي مش مصنفة
-        },
-        order: [['sentence_id', 'ASC']] // ارجع الجمل مرتبات بناء على رقم الجملة وتصاعديا من الصغير للكبر 
-      });
+    // Get all sentence IDs in this task
+    const allSentences = await SentenceModel.findAll({
+      where: { task_id },
+      attributes: ['sentence_id', 'sentence_text'],
+      
+    });
 
-      const annotatedCount = await AnnotationModel.count({
-        where: {
-          task_id,
-          annotator_id,
-          label: {
-            [Op.ne]: 'none'  // not equal
-          }
-        }
-      });
-  
-      // عدد الجمل التي تم عمل skip لها
-      const skippedCount = await AnnotationModel.count({
-        where: {
-          task_id,
-          annotator_id,
-          label: 'none'
-        }
-      });
-  
-      res.json({nextSentence,annotatedCount,skippedCount});
-  
-    } catch (error) {
-      console.error('Error fetching unannotated sentence:', error);
-      res.status(500).json({ message: 'Server error' });
+    const allSentenceIds = allSentences.map(s => s.sentence_id);
+
+    // Get sentence IDs already annotated by this user
+    const userAnnotations = await AnnotationModel.findAll({
+      where: { annotator_id, task_id },
+      attributes: ['sentence_id', 'label'],
+     
+    });
+
+    const annotatedIds = userAnnotations.map(a => a.sentence_id);
+    const skippedIds = userAnnotations
+      .filter(a => a.label === 'none')
+      .map(a => a.sentence_id);
+
+    // Find first unannotated sentence
+    const unannotated = allSentences.find(s => !annotatedIds.includes(s.sentence_id));
+
+    if (unannotated) {
+      return res.status(200).json({ sentence: unannotated });
     }
-  };
+
+    // If all annotated, return a skipped one (if any)
+    if (skippedIds.length > 0) {
+      const skippedSentence = allSentences.find(s => skippedIds.includes(s.sentence_id));
+      return res.status(200).json({
+        message: "You have annotated all sentences. Here is one of the skipped ones.",
+        sentence: skippedSentence
+      });
+    }
+
+    // If nothing left at all
+    return res.status(200).json({ message: "You have annotated all sentences. No more skipped sentences to show." });
+
+  } catch (error) {
+    console.error("Error fetching unannotated sentence:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 
 

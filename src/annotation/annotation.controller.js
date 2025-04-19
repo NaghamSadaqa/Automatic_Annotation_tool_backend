@@ -154,7 +154,9 @@ export const  getAnnotatedSentences = async (req, res) => {
     const annotator_id = req.user.user_id;
 
     const annotations = await AnnotationModel.findAll({
-      where: { task_id, annotator_id },
+      where: { task_id, annotator_id ,   label: {
+        [Op.not]: 'none' // استثناء الجمل المتخطاة
+      } },
       include: [
         {
           model: SentenceModel,
