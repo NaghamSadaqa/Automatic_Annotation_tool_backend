@@ -174,13 +174,14 @@ export const  getAnnotatedSentences = async (req, res) => {
           attributes: ['user_id', 'userName', 'email']
         }
       ],
-      attributes: ['label']
+      attributes: ['label','createdAt']
     });
 
     const formatted = annotations.map(annotation => ({
       sentence_id: annotation.Sentence.sentence_id,
       text: annotation.Sentence.sentence_text,
       label: annotation.label,
+      created_at: annotation.createdAt,
       annotated_by: {
         user_id: annotation.annotator.user_id,
         name: annotation.annotator.userName,
