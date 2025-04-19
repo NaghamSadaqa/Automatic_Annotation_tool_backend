@@ -23,16 +23,17 @@ export const annotateSentence = async( req,res)=>{
       });
   
       if (existingAnnotation) {
-        return res.status(200).json({ message: "You already annotated this sentence." });
+        // حدث التصنيف الموجود بدل إنشاء جديد
+        await existingAnnotation.update({ label });
+      } else {
+        // أنشئ تصنيف جديد
+        await AnnotationModel.create({
+          task_id,
+          annotator_id,
+          sentence_id,
+          label
+        });
       }
-  
-      // أضف التصنيف
-      await AnnotationModel.create({
-        task_id,
-        annotator_id,
-        sentence_id,
-        label
-      });
 
       const count = await AnnotationModel.count({
         where: {
