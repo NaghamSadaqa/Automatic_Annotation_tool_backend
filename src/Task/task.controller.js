@@ -253,6 +253,55 @@ export const people_with_access = async (req, res) => {
 
 
 
+export const getReceivedInvitations = async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const invitations = await InvitationModel.findAll({
+      where: { receiver_id: user_id , status: 'pending' // فقط الدعوات المعلقة
+      },
+        include: [
+        {
+          model: AnnotationTaskModel,
+          as: 'Task',
+          attributes: ['task_id', 'task_name', 'task_description']
+        },
+        {
+          model: UserModel,
+          as: 'Sender',
+          attributes: ['user_id', 'userName', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    const formatted = invitations.map(invite => ({
+      invitation_id: invite.id,
+      message: invite.message,
+      status: invite.status,
+      created_at: invite.createdAt,
+      task: {
+        task_id: invite.Task.task_id,
+        name: invite.Task.task_name,
+        description: invite.Task.task_description
+      },
+      sender: {
+        user_id: invite.Sender.user_id,
+        name: invite.Sender.userName,
+        email: invite.Sender.email
+      }
+    }));
+
+    res.status(200).json({ invitations: formatted });
+
+  } catch (error) {
+    console.error("Error fetching received invitations:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
 
 
 // هون بدنا نجيب كل تفاصيل المهمة 
