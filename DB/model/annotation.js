@@ -19,7 +19,7 @@ SentenceModel.hasMany(AnnotationModel, { foreignKey: "sentence_id" });
 AnnotationModel.belongsTo(SentenceModel, { foreignKey: "sentence_id", onDelete: "CASCADE" });
 
 UserModel.hasMany(AnnotationModel, { foreignKey: "annotator_id" });
-AnnotationModel.belongsTo(UserModel, { foreignKey: "annotator_id", onDelete: "CASCADE" });
+AnnotationModel.belongsTo(UserModel, { foreignKey: "annotator_id",as: "annotator", onDelete: "CASCADE" });
 
 AnnotationTaskModel.hasMany(AnnotationModel, { foreignKey: "task_id" });
 AnnotationModel.belongsTo(AnnotationTaskModel, { foreignKey: "task_id", onDelete: "CASCADE" });

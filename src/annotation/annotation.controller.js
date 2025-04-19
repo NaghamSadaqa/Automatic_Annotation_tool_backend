@@ -1,6 +1,7 @@
 import SentenceModel from "../../DB/model/sentence.js";
 import AnnotationModel from "../../DB/model/annotation.js";
 import AnnotationTaskModel from "../../DB/model/annotationtask.js";
+import UserModel from "../../DB/model/user.js";
 import { Op } from "sequelize";
 
 
@@ -155,13 +156,22 @@ export const  getAnnotatedSentences = async (req, res) => {
     const annotator_id = req.user.user_id;
 
     const annotations = await AnnotationModel.findAll({
-      where: { task_id, annotator_id ,   label: {
-        [Op.not]: 'none' // استثناء الجمل المتخطاة
-      } },
+      where: {
+        task_id,
+        annotator_id,
+        label: {
+          [Op.not]: 'none' // استثناء الجمل المتخطاة
+        }
+      },
       include: [
         {
           model: SentenceModel,
           attributes: ['sentence_id', 'sentence_text']
+        },
+        {
+          model: UserModel,
+          as: 'annotator',
+          attributes: ['user_id', 'userName', 'email']
         }
       ],
       attributes: ['label']
@@ -170,7 +180,12 @@ export const  getAnnotatedSentences = async (req, res) => {
     const formatted = annotations.map(annotation => ({
       sentence_id: annotation.Sentence.sentence_id,
       text: annotation.Sentence.sentence_text,
-      label: annotation.label
+      label: annotation.label,
+      annotated_by: {
+        user_id: annotation.annotator.user_id,
+        name: annotation.annotator.userName,
+        email: annotation.annotator.email
+      }
     }));
 
     res.json(formatted);
