@@ -506,6 +506,45 @@ export const UnannotatedSentence = async (req, res) => {
 
 
 
+export const updateTask = async (req, res) => {
+  try {
+    const { task_id } = req.params;
+    const { task_name, task_description, annotation_type, labels } = req.body;
+
+    // تحققت انه التاسك موجود
+    const task = await AnnotationTaskModel.findByPk(task_id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // التحديث
+    task.task_name = task_name;
+    task.task_description = task_description;
+    task.annotation_type = annotation_type;
+    task.labels = labels;
+
+    await task.save();
+
+    res.status(200).json({
+      message: "Task updated successfully",
+      task: {
+        task_id: task.task_id,
+        task_name: task.task_name,
+        task_description: task.task_description,
+        annotation_type: task.annotation_type,
+        labels: task.labels,
+        updatedAt: task.updatedAt,
+      },
+    });
+
+  } catch (error) {
+    console.error("Error updating task:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
 
 
 
