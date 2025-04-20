@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
 import {authenticateToken} from '../middleware/auth.js';
-import {deleteTask, getReceivedInvitations, getTaskDetails, people_with_access, reject, sendinvitation, UnannotatedSentence, updateTask} from './task.controller.js';
+import {deleteTask, getReceivedInvitations, getTaskDetails, people_with_access, reject, removeCollaborator, sendinvitation, UnannotatedSentence, updateTask} from './task.controller.js';
 import {search} from './task.controller.js';
 import { accept } from "./task.controller.js";
 
@@ -17,4 +17,6 @@ router.delete('/:task_id', authenticateToken, deleteTask);
 router.get('/:task_id/sentences/unannotated',authenticateToken , UnannotatedSentence);
 router.get('/getUserInvitation',authenticateToken , getReceivedInvitations );
 router.post('/:task_id/updateTask', authenticateToken ,updateTask );
+
+router.delete('/:task_id/collaborators/:collaborator_id', authenticateToken , removeCollaborator);
 export default router;

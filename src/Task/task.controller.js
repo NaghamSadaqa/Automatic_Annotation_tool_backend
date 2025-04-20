@@ -547,4 +547,44 @@ export const updateTask = async (req, res) => {
 
 
 
+export const removeCollaborator = async (req, res) => {
+  try {
+    const { task_id, collaborator_id } = req.params;
+    const user_id = req.user.user_id;
+
+    // اتاكد انه المستخدم هو صاحب التاسك
+    const task = await AnnotationTaskModel.findOne({
+      where: {
+        task_id,
+        created_by: user_id
+      }
+    });
+
+    if (!task) {
+      return res.status(403).json({ message: 'Unauthorized to modify this task.' });
+    }
+
+    // تأكدت انه الكولابوريتر موجود
+    const deleted = await TaskCollaboratorModel.destroy({
+      where: {
+        task_id,
+        user_id: collaborator_id
+      }
+    });
+
+    if (deleted === 0) {
+      return res.status(404).json({ message: 'Collaborator not found or already removed.' });
+    }
+
+    res.status(200).json({ message: 'Collaborator removed successfully.' });
+  } catch (error) {
+    console.error('Error removing collaborator:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+
+
 
