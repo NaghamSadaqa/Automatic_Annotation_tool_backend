@@ -1,23 +1,97 @@
 import express from 'express';
 import AnnotationTaskModel from '../../DB/model/annotationtask.js';
-import TaskCollaboratorModel from '../../DB/model/taskcollaborator.js'
+import TaskCollaboratorModel from '../../DB/model/taskcollaborator.js';
+import AnnotationModel from '../../DB/model/annotation.js';
+import SentenceModel from '../../DB/model/sentence.js';
+import { Op } from "sequelize";
 const router = express.Router();
 
 export const owntasks = async (req, res) => {
-  const { user_id } = req.user;
-
   try {
+    const user_id = req.user.user_id;
+
+    //  Owned Tasks
     const ownedTasks = await AnnotationTaskModel.findAll({
       where: { created_by: user_id },
-      attributes: ['task_id', 'task_name', 'task_description', 'annotation_type', 'labels', 'created_by', 'createdAt']
+      attributes: ['task_id', 'task_name', 'task_description', 'labels', 'annotation_type', 'createdAt'],
     });
 
-    res.status(200).json({ tasks: ownedTasks });
+    // Shared Tasks (المستخدم إله annotations فيها بس مش هو المالك)
+    const sharedAnnotations = await AnnotationModel.findAll({
+      where: { annotator_id: user_id },
+      include: [
+        {
+          model: AnnotationTaskModel,
+          as: 'Task',
+          attributes: ['task_id', 'task_name', 'task_description', 'labels', 'annotation_type', 'created_by', 'createdAt'],
+        }
+      ]
+    });
+
+    // تجميع التاسكات المشتركة بدون تكرار
+    const taskMap = new Map();
+
+    sharedAnnotations.forEach(annotation => {
+      const task = annotation.Task;
+      if (task && task.created_by !== user_id) {
+        if (!taskMap.has(task.task_id)) {
+          taskMap.set(task.task_id, task);
+        }
+      }
+    });
+
+    const sharedTasks = Array.from(taskMap.values());
+
+    //  حساب الإحصائيات لكل تاسك (مشتركة أو مملوكة)
+    const buildTaskData = async (task) => {
+      const totalClassified = await AnnotationModel.count({
+        where: {
+          task_id: task.task_id,
+          annotator_id: user_id,
+          label: { [Op.not]: 'none' }
+        }
+      });
+
+      const totalSkipped = await AnnotationModel.count({
+        where: {
+          task_id: task.task_id,
+          annotator_id: user_id,
+          label: 'none'
+        }
+      });
+
+      const totalSentences = await SentenceModel.count({
+        where: { task_id: task.task_id }
+      });
+
+      return {
+        ...task.toJSON(),
+        status: {
+          total_classified: totalClassified,
+          total_skipped: totalSkipped,
+          total_sentences: totalSentences
+        }
+      };
+    };
+
+    const ownedTaskDetails = await Promise.all(ownedTasks.map(buildTaskData));
+    const sharedTaskDetails = await Promise.all(sharedTasks.map(buildTaskData));
+
+    res.json({
+      ownedTasks: ownedTaskDetails,
+      sharedTasks: sharedTaskDetails
+    });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error('Error fetching user tasks:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
+
+
+
+
+
 
 
 export const taskcollaborator = async (req, res) => {
