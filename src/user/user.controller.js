@@ -16,33 +16,21 @@ export const owntasks = async (req, res) => {
       attributes: ['task_id', 'task_name', 'task_description', 'labels', 'annotation_type', 'createdAt'],
     });
 
-    // Shared Tasks (المستخدم إله annotations فيها بس مش هو المالك)
-    const sharedAnnotations = await AnnotationModel.findAll({
-      where: { annotator_id: user_id },
-      include: [
-        {
-          model: AnnotationTaskModel,
-          as: 'Task',
-          attributes: ['task_id', 'task_name', 'task_description', 'labels', 'annotation_type', 'created_by', 'createdAt'],
-        }
-      ]
+    //  Shared Tasks (اللي المستخدم مشارك فيها عن طريق TaskCollaborator)
+    const collaborations = await TaskCollaboratorModel.findAll({
+      where: { user_id },
+      include: [{
+        model: AnnotationTaskModel,
+        as: 'Task',
+        attributes: ['task_id', 'task_name', 'task_description', 'labels', 'annotation_type', 'created_by', 'createdAt'],
+      }]
     });
 
-    // تجميع التاسكات المشتركة بدون تكرار
-    const taskMap = new Map();
+    // استخراج التاسكات المشتركة من العلاقات
+    const sharedTasks = collaborations
+      .map(collab => collab.Task)
+      .filter(task => task && task.created_by !== user_id);  // نتاكد انه مش مالك
 
-    sharedAnnotations.forEach(annotation => {
-      const task = annotation.Task;
-      if (task && task.created_by !== user_id) {
-        if (!taskMap.has(task.task_id)) {
-          taskMap.set(task.task_id, task);
-        }
-      }
-    });
-
-    const sharedTasks = Array.from(taskMap.values());
-
-    //  حساب الإحصائيات لكل تاسك (مشتركة أو مملوكة)
     const buildTaskData = async (task) => {
       const totalClassified = await AnnotationModel.count({
         where: {
