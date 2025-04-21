@@ -19,6 +19,6 @@ const SentenceModel = sequelize.define("Sentence", {
     }
    
 });
-AnnotationTaskModel.hasMany(SentenceModel, { foreignKey: "task_id" });
+AnnotationTaskModel.hasMany(SentenceModel, { foreignKey: "task_id", onDelete: "CASCADE"  });
 SentenceModel.belongsTo(AnnotationTaskModel, { foreignKey: "task_id", onDelete: "CASCADE" });
 export default SentenceModel;

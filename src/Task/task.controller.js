@@ -404,38 +404,30 @@ export const getTaskDetails = async (req, res) => {
 // حذف المهمة من قبل اليوزر الي قام بانشائها
 export const deleteTask = async (req, res) => {
   const { task_id } = req.params;
-  const user_id = req.user.user_id; // جاي من التوكن
+  const user_id = req.user.user_id;
 
   try {
-    // نجيب المهمة
+    // التأكد من وجود المهمة و إنها فعلاً مملوكة لهذا المستخدم
     const task = await AnnotationTaskModel.findOne({
       where: {
         task_id,
-        is_deleted: 0
+        created_by: user_id
       }
     });
 
     if (!task) {
       return res.status(404).send({
-        ErrorMsg: "Task not found.",
+        ErrorMsg: "Task not found or you are not authorized to delete it.",
         ErrorFields: null
       });
     }
 
-    // نتأكد إن المستخدم هو صاحب المهمة
-    if (task.created_by !== user_id) {
-      return res.status(403).send({
-        ErrorMsg: "You are not authorized to delete this task.",
-        ErrorFields: null
-      });
-    }
-
-    // نحذف المهمة 
-    task.is_deleted = 1;
-    await task.save();
+    // حذف المهمة بشكل نهائي
+    await task.destroy(); // هذا هو السطر يلي لازم يعمل cascade
+    res.json({ message: "Task deleted successfully" });
 
     return res.status(200).send({
-      message: "Task deleted successfully."
+      message: "Task deleted permanently."
     });
 
   } catch (err) {

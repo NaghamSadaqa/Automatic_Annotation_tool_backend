@@ -22,10 +22,6 @@ const AnnotationTaskModel = sequelize.define("AnnotationTask", {
     labels: {
         type: DataTypes.STRING,
         allowNull: false,
-    },
-    is_deleted: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
     }
   
    

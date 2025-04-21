@@ -22,11 +22,11 @@ const TaskCollaboratorModel = sequelize.define("TaskCollaborator", {
 
 
 // العلاقات
-AnnotationTaskModel.hasMany(TaskCollaboratorModel, { foreignKey: "task_id", as: "Collaborators" });
-TaskCollaboratorModel.belongsTo(AnnotationTaskModel, { foreignKey: "task_id", as: "Task" });
+AnnotationTaskModel.hasMany(TaskCollaboratorModel, { foreignKey: "task_id", as: "Collaborators", onDelete: "CASCADE" });
+TaskCollaboratorModel.belongsTo(AnnotationTaskModel, { foreignKey: "task_id", as: "Task" , onDelete: "CASCADE" });
 
 
-UserModel.hasMany(TaskCollaboratorModel, { foreignKey: "user_id", as: "Tasks" });
-TaskCollaboratorModel.belongsTo(UserModel, { foreignKey: "user_id", as: "Collaborator" });
+UserModel.hasMany(TaskCollaboratorModel, { foreignKey: "user_id", as: "Tasks" , onDelete: "CASCADE"});
+TaskCollaboratorModel.belongsTo(UserModel, { foreignKey: "user_id", as: "Collaborator" , onDelete: "CASCADE" });
 
 export default TaskCollaboratorModel;

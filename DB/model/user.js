@@ -24,7 +24,7 @@ const UserModel = sequelize.define("User",{
     },
    
     dateofbirth:{
-     type:DataTypes.DATE,
+     type:DataTypes.DATEONLY,
      allowNull:false,
     },
    

@@ -15,13 +15,13 @@ const AnnotationModel = sequelize.define("Annotation", {
     }
    
 });
-SentenceModel.hasMany(AnnotationModel, { foreignKey: "sentence_id" });
+SentenceModel.hasMany(AnnotationModel, { foreignKey: "sentence_id" , onDelete: "CASCADE"});
 AnnotationModel.belongsTo(SentenceModel, { foreignKey: "sentence_id", onDelete: "CASCADE" });
 
-UserModel.hasMany(AnnotationModel, { foreignKey: "annotator_id" });
+UserModel.hasMany(AnnotationModel, { foreignKey: "annotator_id", onDelete: "CASCADE" });
 AnnotationModel.belongsTo(UserModel, { foreignKey: "annotator_id",as: "annotator", onDelete: "CASCADE" });
 
-AnnotationTaskModel.hasMany(AnnotationModel, { foreignKey: "task_id" });
+AnnotationTaskModel.hasMany(AnnotationModel, { foreignKey: "task_id" , onDelete: "CASCADE"});
 AnnotationModel.belongsTo(AnnotationTaskModel, { as: 'Task' ,foreignKey: "task_id", onDelete: "CASCADE" });
 
 export default AnnotationModel;

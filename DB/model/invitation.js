@@ -39,31 +39,37 @@ const InvitationModel = sequelize.define("Invitation", {
 // علاقة مع التاسك
 InvitationModel.belongsTo(AnnotationTaskModel, {
   foreignKey: 'task_id',
-  as: 'Task'
+  as: 'Task',
+  onDelete: 'CASCADE'
 });
 AnnotationTaskModel.hasMany(InvitationModel, {
   foreignKey: 'task_id',
-  as: 'TaskInvitations'
+  as: 'TaskInvitations' ,
+  onDelete: 'CASCADE'
 });
 
 // علاقة مع المرسل
 InvitationModel.belongsTo(UserModel, {
   foreignKey: 'sender_id',
-  as: 'Sender'
+  as: 'Sender',
+  onDelete: 'CASCADE'
 });
 UserModel.hasMany(InvitationModel, {
   foreignKey: 'sender_id',
-  as: 'SentInvitations'
+  as: 'SentInvitations',
+  onDelete: 'CASCADE'
 });
 
 // علاقة مع المستقبل
 InvitationModel.belongsTo(UserModel, {
   foreignKey: 'receiver_id',
-  as: 'Receiver'
+  as: 'Receiver',
+  onDelete: 'CASCADE',
 });
 UserModel.hasMany(InvitationModel, {
   foreignKey: 'receiver_id',
-  as: 'ReceivedInvitations'
+  as: 'ReceivedInvitations',
+  onDelete: 'CASCADE',
 });
 
 export default InvitationModel;

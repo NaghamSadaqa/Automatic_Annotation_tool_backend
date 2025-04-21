@@ -36,7 +36,7 @@ const FileManager = sequelize.define("FileManager", {
 });
 
 UserModel.hasMany(FileManager, { foreignKey: "uploaded_by" });
-AnnotationTaskModel.hasMany(FileManager, { foreignKey: "task_id" });
+AnnotationTaskModel.hasMany(FileManager, { foreignKey: "task_id" ,onDelete: "CASCADE" });
 FileManager.belongsTo(UserModel, { foreignKey: "uploaded_by" });
 FileManager.belongsTo(AnnotationTaskModel, { foreignKey: "task_id", onDelete: "CASCADE" });
 
