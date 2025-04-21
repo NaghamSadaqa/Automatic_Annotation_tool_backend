@@ -27,7 +27,7 @@ export const annotateSentence = async( req,res)=>{
       });
 
       if (!isCollaborator) {
-        return res.status(403).json({
+        return res.status(401).json({
           message: "You are not authorized to annotate this task."
         });
       }

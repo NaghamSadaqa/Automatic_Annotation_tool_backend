@@ -93,7 +93,7 @@ export const search = async (req, res) => {
       }
      
       if (task.created_by !== sender_id) {
-        return res.status(403).send({
+        return res.status(401).send({
           ErrorMsg: "You are not authorized to invite users to this task.",
           ErrorFields: null
         });
