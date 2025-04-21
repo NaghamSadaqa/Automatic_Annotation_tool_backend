@@ -91,7 +91,14 @@ export const search = async (req, res) => {
           ErrorFields: null
         });
       }
-  
+     
+      if (task.created_by !== sender_id) {
+        return res.status(403).send({
+          ErrorMsg: "You are not authorized to invite users to this task.",
+          ErrorFields: null
+        });
+      }
+
       for (const email of selectedUsers) {
         const receiver = await UserModel.findOne({ where: { email, is_deleted: false } });
         if (!receiver) continue;
@@ -423,7 +430,7 @@ export const deleteTask = async (req, res) => {
     }
 
     // حذف المهمة بشكل نهائي
-    await task.destroy(); // هذا هو السطر يلي لازم يعمل cascade
+    await task.destroy(); 
     res.json({ message: "Task deleted successfully" });
 
     return res.status(200).send({
