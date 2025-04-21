@@ -3,6 +3,7 @@ import AnnotationTaskModel from '../../DB/model/annotationtask.js';
 import TaskCollaboratorModel from '../../DB/model/taskcollaborator.js';
 import AnnotationModel from '../../DB/model/annotation.js';
 import SentenceModel from '../../DB/model/sentence.js';
+import UserModel from '../../DB/model/user.js';
 import { Op } from "sequelize";
 const router = express.Router();
 
@@ -102,6 +103,41 @@ export const taskcollaborator = async (req, res) => {
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Internal Server Error' });
+    }
+  };
+
+
+  export const updateProfile = async (req, res) => {
+    const user_id = req.user.user_id;
+    const { userName , email, birthofdate } = req.body;
+  
+    try {
+      const user = await UserModel.findOne({ where: { user_id, is_deleted: false } });
+      if (!user) {
+        return res.status(401).json({ message: "User not found." });
+      }
+  
+      // تحديث البيانات
+      if (userName) user.userName = userName;
+      if (email) user.email = email;
+      if (birthofdate) user.dateofbirth = birthofdate;
+  
+      await user.save();
+  
+      res.status(200).json({
+        message: "Profile updated successfully.",
+        user: {
+          user_id: user.user_id,
+          userName: user.userName,
+          email: user.email,
+          birthofdate: user.dateofbirth,
+          role: user.role
+        }
+      });
+  
+    } catch (err) {
+      console.error("Update profile error:", err);
+      res.status(500).json({ message: "Server error." });
     }
   };
   
