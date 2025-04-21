@@ -3,6 +3,7 @@ import AnnotationModel from "../../DB/model/annotation.js";
 import AnnotationTaskModel from "../../DB/model/annotationtask.js";
 import UserModel from "../../DB/model/user.js";
 import { Op } from "sequelize";
+import TaskCollaboratorModel from "../../DB/model/taskcollaborator.js";
 
 
 export const annotateSentence = async( req,res)=>{
@@ -10,6 +11,29 @@ export const annotateSentence = async( req,res)=>{
         const task_id = req.params.task_id;
         const annotator_id = req.user.user_id;// من التوكن
         const {sentence_id , label} = req.body;
+    // تحقق إن المهمة موجودة
+    const task = await AnnotationTaskModel.findByPk(task_id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found." });
+    }
+
+    // تحقق إن المستخدم هو صاحب المهمة أو مشارك فيها
+    if (task.created_by !== annotator_id) {
+      const isCollaborator = await TaskCollaboratorModel.findOne({
+        where: {
+          task_id: task_id,
+          user_id: annotator_id
+        }
+      });
+
+      if (!isCollaborator) {
+        return res.status(403).json({
+          message: "You are not authorized to annotate this task."
+        });
+      }
+    }
+
+
    // تحققت انه الجملة موجودة وبتخص نفس المهمة
     const sentence = await SentenceModel.findOne({ where: { sentence_id, task_id } });
     if (!sentence) {
