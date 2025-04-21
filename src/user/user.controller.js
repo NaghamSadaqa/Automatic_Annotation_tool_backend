@@ -5,6 +5,7 @@ import AnnotationModel from '../../DB/model/annotation.js';
 import SentenceModel from '../../DB/model/sentence.js';
 import UserModel from '../../DB/model/user.js';
 import { Op } from "sequelize";
+import bcrypt from 'bcryptjs';
 const router = express.Router();
 
 export const owntasks = async (req, res) => {
@@ -114,7 +115,7 @@ export const taskcollaborator = async (req, res) => {
     try {
       const user = await UserModel.findOne({ where: { user_id, is_deleted: false } });
       if (!user) {
-        return res.status(401).json({ message: "User not found." });
+        return res.status(404).json({ message: "User not found." });
       }
   
       // تحديث البيانات
@@ -137,6 +138,36 @@ export const taskcollaborator = async (req, res) => {
   
     } catch (err) {
       console.error("Update profile error:", err);
+      res.status(500).json({ message: "Server error." });
+    }
+  };
+
+
+
+
+  export const changePassword = async (req, res) => {
+    const user_id = req.user.user_id;
+    const { current_password, new_password } = req.body;
+  
+    try {
+      const user = await UserModel.findOne({ where: { user_id, is_deleted: false } });
+      if (!user) {
+        return res.status(404).json({ message: "User not found." });
+      }
+  
+      const isMatch = await bcrypt.compare(current_password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Current password is incorrect." });
+      }
+  
+      const hashedPassword = await bcrypt.hash(new_password, 8);
+      user.password = hashedPassword;
+      await user.save();
+  
+      res.status(200).json({ message: "Password changed successfully." });
+  
+    } catch (err) {
+      console.error("Change password error:", err);
       res.status(500).json({ message: "Server error." });
     }
   };
