@@ -173,5 +173,38 @@ export const taskcollaborator = async (req, res) => {
   };
   
 
+  export const deleteAccount = async (req, res) => {
+    const user_id = req.user.user_id;
+  
+    try {
+      const user = await UserModel.findOne({
+        where: {
+          user_id,
+          is_deleted: false
+        }
+      });
+  
+      if (!user) {
+        return res.status(404).json({ message: "User not found or already deleted." });
+      }
+  
+      await user.update({ is_deleted: true });
+  
+      return res.status(200).json({ message: "Account deleted successfully." });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  };
+
+
+
+
+
+
+
+
+  
+
 
 
