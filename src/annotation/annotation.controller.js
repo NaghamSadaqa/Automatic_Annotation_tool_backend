@@ -77,6 +77,7 @@ export const annotateSentence = async( req,res)=>{
           label: 'none'
         }
       });
+      await checkAndMarkTaskAsCompleted(task_id, annotator_id);
   
       res.status(201).json({ message: "Annotation saved successfully." , annotatedCount: count , skippedCount:skippedCount });
   
@@ -85,6 +86,52 @@ export const annotateSentence = async( req,res)=>{
       res.status(500).json({ message: "Server error" });
     }
   };
+
+  const checkAndMarkTaskAsCompleted = async (task_id, user_id) => {
+    const sentenceCount = await SentenceModel.count({ where: { task_id } });
+  
+    const completedAnnotations = await AnnotationModel.count({
+      where: {
+        task_id,
+        annotator_id: user_id,
+        label: {
+          [Op.ne]: 'none'
+        }
+      }
+    });
+  
+    if (completedAnnotations === sentenceCount) {
+      // المستخدم خلص كل الجمل
+      if (user_id === (await AnnotationTaskModel.findByPk(task_id)).created_by) {
+        // هو صاحب المهمة
+        await AnnotationTaskModel.update(
+          { status: 'completed' },
+          { where: { task_id: task_id, created_by: user_id } }
+        );
+      } else {
+        // هو مشارك بالمهمة
+        await TaskCollaboratorModel.update(
+          { status: 'completed' },
+          {
+            where: {
+              task_id,
+              user_id
+            }
+          }
+        );
+      }
+    }
+  };
+
+
+
+
+
+
+
+
+
+
 
 
 

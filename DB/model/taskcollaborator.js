@@ -17,6 +17,10 @@ const TaskCollaboratorModel = sequelize.define("TaskCollaborator", {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
+    status: {
+        type: DataTypes.ENUM('in-progress', 'completed'),
+        defaultValue: "in-progress",
+    }
 
 });
 

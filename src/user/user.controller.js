@@ -220,6 +220,53 @@ export const taskcollaborator = async (req, res) => {
 
 
 
+  export const getUserTaskStatus = async (req, res) => {
+    try {
+      const user_id = req.user.user_id;
+  
+      // عدد المهام التي يملكها المستخدم
+      const ownedTasks = await AnnotationTaskModel.count({
+        where: { created_by: user_id }
+      });
+  
+      // عدد المهام التي تم مشاركتها مع المستخدم
+      const sharedTasks = await TaskCollaboratorModel.count({
+        where: { user_id: user_id }
+      });
+  
+      // عدد المهام المكتملة التي يملكها المستخدم
+      const ownedCompletedTasks = await AnnotationTaskModel.count({
+        where: {
+          created_by: user_id,
+          status: 'completed'
+        }
+      });
+  
+      // عدد المهام المكتملة التي تمت مشاركتها مع المستخدم
+      const sharedCompletedTasks = await AnnotationTaskModel.count({
+        include: [{
+          model: TaskCollaboratorModel,
+         as: "Collaborators", 
+          where: { user_id: user_id , status: 'completed'}
+        }]
+       
+      });
+  
+      return res.status(200).json({
+        information: {
+          ownedTasks,
+          sharedTasks,
+          sharedCompletedTasks,
+          ownedCompletedTasks
+        }
+      });
+  
+    } catch (error) {
+      console.error("Error getting task stats:", error);
+      return res.status(500).json({ message: "Server error" });
+    }
+  };
+
 
 
 

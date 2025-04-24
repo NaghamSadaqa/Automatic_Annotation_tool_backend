@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
 import {authenticateToken} from '../middleware/auth.js';
-import {changePassword, deleteAccount, getUserData, owntasks, taskcollaborator, updateProfile} from './user.controller.js';
+import {changePassword, deleteAccount, getUserData, getUserTaskStatus, owntasks, taskcollaborator, updateProfile} from './user.controller.js';
 
 
 
@@ -12,4 +12,5 @@ router.post('/editAccountInfo', authenticateToken,updateProfile );
 router.post('/changePassword',authenticateToken,  changePassword);
 router.post('/deleteAccount', authenticateToken,deleteAccount);
 router.get('/getUserData', authenticateToken, getUserData);
+router.get('/task-status', authenticateToken , getUserTaskStatus);
 export default router;

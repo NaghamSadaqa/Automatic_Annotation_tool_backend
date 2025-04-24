@@ -22,8 +22,11 @@ const AnnotationTaskModel = sequelize.define("AnnotationTask", {
     labels: {
         type: DataTypes.STRING,
         allowNull: false,
+    },
+    status: {
+        type: DataTypes.ENUM('in-progress', 'completed'),
+        defaultValue: "in-progress",
     }
-  
    
 });
 UserModel.hasMany(AnnotationTaskModel, { foreignKey: "created_by" , as: "OwnedTasks" });
