@@ -11,7 +11,7 @@ import { Op } from "sequelize";
 // هاد عشان عملية البحث عن الايميل باول حرف بدخله
 export const search = async (req, res) => {
   const { query, task_id } = req.query;
-
+  const currentUserId = req.user.user_id; 
   if (!query || query.trim() === "" || !task_id) {
     return res.status(400).send({
       ErrorMsg: "Please provide a valid search query and task_id.",
@@ -39,7 +39,7 @@ export const search = async (req, res) => {
         },
         is_deleted: 0,
         user_id: {
-          [Op.notIn]: sharedUserIds,
+          [Op.notIn]: [...sharedUserIds, currentUserId],
         }
       },
       attributes: ['user_id', 'email', 'userName'],
@@ -431,12 +431,8 @@ export const deleteTask = async (req, res) => {
 
     // حذف المهمة بشكل نهائي
     await task.destroy(); 
-    res.json({ message: "Task deleted successfully" });
-
-    return res.status(200).send({
-      message: "Task deleted permanently."
-    });
-
+    return res.status(200).json({ message: "Task deleted successfully" });
+    
   } catch (err) {
     console.error(err);
     return res.status(500).send({
