@@ -7,72 +7,64 @@ import xlsx from 'xlsx';
 import csvParser from 'csv-parser';
 import SentenceModel from '../../DB/model/sentence.js';
 
+
 export const uploadFile = async (req, res, next) => {
-    
     const { task_name, task_description, annotation_type, labels } = req.body;
-    const uploaded_by = req.user.user_id; // استخراج user_id من التوكن
+    const uploaded_by = req.user.user_id;
 
     if (!req.file) {
         return next(new AppError("A valid file must be uploaded", 400));
     }
-    
-
-    //   إنشاء مهمة جديدة في AnnotationTaskModel
-    const newTask = await AnnotationTaskModel.create({
-        task_name,
-        task_description,
-        annotation_type,
-        labels,
-        created_by: uploaded_by // ربط المهمة بالمستخدم
-    });
-
-    //  تخزين بيانات الملف في FileManager
-    const newFile = await FileManager.create({
-        file_name: req.file.filename,
-        file_path: req.file.path,
-        file_type: req.file.mimetype,
-        uploaded_by,
-        task_id: newTask.task_id // ربط الملف بالمهمة التي تم إنشاؤها
-    });
 
     const filePath = req.file.path;
-    let fileExtension = req.file.originalname.split('.').pop().toLowerCase();
-    
+    const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+
     let sentences = [];
-    const findColumnName = (columns, possibleNames) => {
-        return columns.find(col => 
-            possibleNames.some(name => col.toLowerCase().includes(name.toLowerCase()))
-        );
+
+    const findColumnName = (columns, row, possibleNames) => {
+        return columns.find(col => {
+            if (!row[col]) return false; // تأكدت انه فيه بيانات
+            return possibleNames.some(name => col.toLowerCase().includes(name.toLowerCase()));
+        });
     };
+
     try {
         if (fileExtension === "csv") {
             await new Promise((resolve, reject) => {
                 let headersProcessed = false;
                 let sentenceCol = null;
                 let idCol = null;
+                let rowIndex = 1;
 
                 fs.createReadStream(filePath)
                     .pipe(csvParser())
                     .on("data", (row) => {
                         if (!headersProcessed) {
                             const columns = Object.keys(row);
-                            sentenceCol = findColumnName(columns, ["sentence", "text", "content"]);
-                            idCol = findColumnName(columns, ["id", "row", "row number", "index"]);
+                            sentenceCol = findColumnName(columns, row, ["sentence", "text", "content"]);
+
+                            // لو مش لاقي عمود نجيب أول عمود موجود فيه داتا
+                            if (!sentenceCol && columns.length > 0) {
+                                sentenceCol = columns[0];
+                            }
+
+                            idCol = findColumnName(columns, row, ["id", "row", "row number", "index"]);
                             headersProcessed = true;
                         }
 
                         if (sentenceCol) {
                             const sentence = row[sentenceCol];
-                            const originalFileRowId = idCol ? row[idCol] : null;
-                            
-                            if (sentence) {
+                            const originalFileRowId = idCol ? row[idCol] : rowIndex;
+
+                            if (sentence && typeof sentence === "string" && sentence.trim() !== "") {
                                 sentences.push({
-                                    sentence_text: sentence,
-                                    task_id: newTask.task_id,
+                                    sentence_text: sentence.trim(),
+                                    task_id: null, // مؤقت بنحدثه بعدين
                                     original_file_row_id: originalFileRowId
                                 });
                             }
                         }
+                        rowIndex++;
                     })
                     .on("end", resolve)
                     .on("error", reject);
@@ -80,20 +72,32 @@ export const uploadFile = async (req, res, next) => {
         } else if (fileExtension === "xlsx") {
             const workbook = xlsx.readFile(filePath);
             const sheetName = workbook.SheetNames[0];
-            const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
 
             if (sheetData.length > 0) {
                 const columns = Object.keys(sheetData[0]);
-                const sentenceCol = findColumnName(columns, ["sentence", "text", "content"]);
-                const idCol = findColumnName(columns, ["id", "row", "row number", "index"]);
+                let sentenceCol = findColumnName(columns, sheetData[0], ["sentence", "text", "content"]);
 
-                sentences = sheetData
-                    .map(row => ({
-                        sentence_text: sentenceCol ? row[sentenceCol] : null,
-                        original_file_row_id: idCol ? row[idCol] : null,
-                        task_id: newTask.task_id
-                    }))
-                    .filter(entry => entry.sentence_text);
+                if (!sentenceCol && columns.length > 0) {
+                    sentenceCol = columns[0];
+                }
+
+                let idCol = findColumnName(columns, sheetData[0], ["id", "row", "row number", "index"]);
+
+                let rowIndex = 1;
+                sentences = sheetData.map(row => {
+                    const sentence = sentenceCol ? row[sentenceCol] : null;
+                    const originalFileRowId = idCol ? row[idCol] : rowIndex++;
+
+                    if (sentence && typeof sentence === "string" && sentence.trim() !== "") {
+                        return {
+                            sentence_text: sentence.trim(),
+                            task_id: null,
+                            original_file_row_id: originalFileRowId
+                        };
+                    }
+                    return null;
+                }).filter(entry => entry !== null);
             }
         } else {
             return next(new AppError("Invalid file format. Use CSV or Excel.", 400));
@@ -103,14 +107,38 @@ export const uploadFile = async (req, res, next) => {
             return next(new AppError("No valid sentences found in the file!", 400));
         }
 
-        const savedSentences = await SentenceModel.bulkCreate(sentences);
+        // إنشاء المهمة
+        const newTask = await AnnotationTaskModel.create({
+            task_name,
+            task_description,
+            annotation_type,
+            labels,
+            created_by: uploaded_by
+        });
+
+        // تخزين بيانات الملف
+        const newFile = await FileManager.create({
+            file_name: req.file.filename,
+            file_path: req.file.path,
+            file_type: req.file.mimetype,
+            uploaded_by,
+            task_id: newTask.task_id
+        });
+
+        // تحديث الجمل بالـ task_id وربطهم بالمهمة
+        const sentencesWithTaskId = sentences.map(sentence => ({
+            ...sentence,
+            task_id: newTask.task_id
+        }));
+
+        const savedSentences = await SentenceModel.bulkCreate(sentencesWithTaskId);
 
         res.status(201).json({
             message: `Task created, file uploaded, and ${savedSentences.length} sentences saved successfully!`,
-          
         });
 
     } catch (error) {
+        console.error(error);
         return next(new AppError("Error processing file: " + error.message, 500));
     }
 };
