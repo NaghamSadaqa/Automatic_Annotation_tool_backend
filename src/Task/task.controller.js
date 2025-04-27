@@ -453,20 +453,18 @@ export const UnannotatedSentence = async (req, res) => {
     const { task_id } = req.params;
     const annotator_id = req.user.user_id;
 
-    // Get all sentence IDs in this task
+    
     const allSentences = await SentenceModel.findAll({
       where: { task_id },
       attributes: ['sentence_id', 'sentence_text'],
-      
     });
 
     const allSentenceIds = allSentences.map(s => s.sentence_id);
 
-    // Get sentence IDs already annotated by this user
+   
     const userAnnotations = await AnnotationModel.findAll({
       where: { annotator_id, task_id },
       attributes: ['sentence_id', 'label'],
-     
     });
 
     const annotatedIds = userAnnotations.map(a => a.sentence_id);
@@ -474,23 +472,60 @@ export const UnannotatedSentence = async (req, res) => {
       .filter(a => a.label === 'none')
       .map(a => a.sentence_id);
 
-    // Find first unannotated sentence
+    
     const unannotated = allSentences.find(s => !annotatedIds.includes(s.sentence_id));
 
     if (unannotated) {
-      return res.status(200).json({ sentence: unannotated });
-    }
+    
+      const annotationsForSentence = await AnnotationModel.findAll({
+        where: { sentence_id: unannotated.sentence_id, task_id },
+        attributes: ['annotator_id', 'label'],
+      });
 
-    // If all annotated, return a skipped one (if any)
-    if (skippedIds.length > 0) {
-      const skippedSentence = allSentences.find(s => skippedIds.includes(s.sentence_id));
+      
+      const usersAnnotations = await Promise.all(
+        annotationsForSentence.map(async (annotation) => {
+          const user = await UserModel.findOne({ where: { user_id: annotation.annotator_id }, attributes: ['user_name'] });
+          return {
+            userName: user ? user.user_name : "Unknown",
+            annotation: annotation.label === 'none' ? 'none' : annotation.label || 'NONE',
+          };
+        })
+      );
+
       return res.status(200).json({
-        message: "You have annotated all sentences. Here is one of the skipped ones.",
-        sentence: skippedSentence
+        sentenceToAnnotate: unannotated.sentence_text,
+        usersAnnotations, // array of objects 
       });
     }
 
-    // If nothing left at all
+    
+    if (skippedIds.length > 0) {
+      const skippedSentence = allSentences.find(s => skippedIds.includes(s.sentence_id));
+
+      
+      const annotationsForSkippedSentence = await AnnotationModel.findAll({
+        where: { sentence_id: skippedSentence.sentence_id, task_id },
+        attributes: ['annotator_id', 'label'],
+      });
+
+      const usersAnnotationsSkipped = await Promise.all(
+        annotationsForSkippedSentence.map(async (annotation) => {
+          const user = await UserModel.findOne({ where: { user_id: annotation.annotator_id }, attributes: ['userName'] });
+          return {
+            userName: user ? user.userName : "Unknown",
+            annotation: annotation.label === 'none' ? 'none' : annotation.label || 'NONE',
+          };
+        })
+      );
+
+      return res.status(200).json({
+        message: "You have annotated all sentences. Here is one of the skipped ones.",
+        sentenceToAnnotate: skippedSentence.sentence_text,
+        usersAnnotations: usersAnnotationsSkipped, // array of objects 
+      });
+    }
+
     return res.status(200).json({ message: "You have annotated all sentences. No more skipped sentences to show." });
 
   } catch (error) {
@@ -498,6 +533,8 @@ export const UnannotatedSentence = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
 
 
 
