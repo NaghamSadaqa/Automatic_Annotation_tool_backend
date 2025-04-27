@@ -12,6 +12,7 @@ import sentenceRouter from './sentence/sentence.router.js';
 import userRouter from './user/user.router.js';
 import taskRouter from './Task/task.router.js';
 import annotationRouter from './annotation/annotation.router.js';
+import adminRouter from './user/admin.router.js';
 import { globalErrorHandler } from './middleware/globalErrorHandler.js';
 
 const initApp = (app,express)=>{
@@ -24,7 +25,7 @@ const initApp = (app,express)=>{
     app.use('/tasks',taskRouter);
     app.use('/users',userRouter);
     app.use('/annotation',annotationRouter)
-    //app.use('/admin',adminRouter);
+    app.use('/admin',adminRouter);
 
     app.use(globalErrorHandler);
     

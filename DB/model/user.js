@@ -51,7 +51,7 @@ export async function createAdmin() {
       const adminExists = await UserModel.findOne({ where: { role: "admin" } });
       if (!adminExists) {
         const password= "nagham123";
-        const hashedpassword = bcrypt.hashSync("password", 8); 
+        const hashedpassword = bcrypt.hashSync(password, 8); 
         await UserModel.create({
           userName: "NaghamSadaqa",
           email: "naghamsadaqa@gmail.com",
