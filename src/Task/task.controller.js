@@ -485,16 +485,20 @@ export const UnannotatedSentence = async (req, res) => {
       
       const usersAnnotations = await Promise.all(
         annotationsForSentence.map(async (annotation) => {
-          const user = await UserModel.findOne({ where: { user_id: annotation.annotator_id }, attributes: ['user_name'] });
+          const user = await UserModel.findOne({ where: { user_id: annotation.annotator_id }, attributes: ['userName'] });
           return {
-            userName: user ? user.user_name : "Unknown",
+            userName: user ? user.userName : "Unknown",
             annotation: annotation.label === 'none' ? 'none' : annotation.label || 'NONE',
           };
         })
       );
 
       return res.status(200).json({
-        sentenceToAnnotate: unannotated.sentence_text,
+        sentenceToAnnotate: {
+          sentence_text:unannotated.sentence_text,
+          sentence_id: unannotated.sentence_id
+          
+        },
         usersAnnotations, // array of objects 
       });
     }
@@ -521,7 +525,11 @@ export const UnannotatedSentence = async (req, res) => {
 
       return res.status(200).json({
         message: "You have annotated all sentences. Here is one of the skipped ones.",
-        sentenceToAnnotate: skippedSentence.sentence_text,
+        sentenceToAnnotate: {
+          sentence_text:skippedSentence.sentence_text,
+          sentence_id: skippedSentence.sentence_id
+          
+        },
         usersAnnotations: usersAnnotationsSkipped, // array of objects 
       });
     }
