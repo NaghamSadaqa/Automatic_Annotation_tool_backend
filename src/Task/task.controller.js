@@ -7,7 +7,7 @@ import InvitationModel from '../../DB/model/invitation.js';
 import AnnotationModel from "../../DB/model/annotation.js";
 import SentenceModel from "../../DB/model/sentence.js";
 import { Op } from "sequelize";
-
+import FileManager from "../../DB/model/filemanager.js";
 // هاد عشان عملية البحث عن الايميل باول حرف بدخله
 export const search = async (req, res) => {
   const { query, task_id } = req.query;
@@ -620,6 +620,30 @@ export const removeCollaborator = async (req, res) => {
   } catch (error) {
     console.error('Error removing collaborator:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+
+export const getTaskFiles = async (req, res, next) => {
+  try {
+    const { task_id } = req.params;
+
+    const files = await FileManager.findAll({ task_id: task_id });
+
+    res.json({
+      message: 'Files fetched successfully',
+      files: files.map(file => ({
+        file_name: file.file_name,
+        file_path: file.file_path,
+        file_type: file.file_type,
+        uploaded_by: file.uploaded_by,
+        uploaded_at: file.uploaded_at,
+      })),
+    });
+  } catch (error) {
+    return next(error);
   }
 };
 

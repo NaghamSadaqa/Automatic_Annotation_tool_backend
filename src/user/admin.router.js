@@ -13,8 +13,8 @@ const router = Router();
 router.post("/addusers", authenticateToken, addUsers);
 
   
-router.delete('/deleteTasks',authenticateToken , deleteTasks );
-router.delete('/deleteUsers', authenticateToken , deleteUsers);
+router.delete('/deleteTasks',authenticateToken , deleteTasks ); // اغير قصة destroy to soft deleted 
+router.delete('/deleteUsers', authenticateToken , deleteUsers); //هاي تمام معمولة سوفت ديليت
 router.get('/data', authenticateToken , fetchAllData);
 
 
