@@ -85,7 +85,7 @@ export const search = async (req, res) => {
   
     try {
       const task = await AnnotationTaskModel.findByPk(task_id);
-      if (!task) {
+      if (!task || task.is_deleted) {
         return res.status(404).send({
           ErrorMsg: "Task not found.",
           ErrorFields: null
@@ -418,7 +418,8 @@ export const deleteTask = async (req, res) => {
     const task = await AnnotationTaskModel.findOne({
       where: {
         task_id,
-        created_by: user_id
+        created_by: user_id,
+        is_deleted: false
       }
     });
 
@@ -429,8 +430,9 @@ export const deleteTask = async (req, res) => {
       });
     }
 
-    // حذف المهمة بشكل نهائي
-    await task.destroy(); 
+    // Soft delete تغيير القيمة
+    task.is_deleted = true;
+    await task.save();
     return res.status(200).json({ message: "Task deleted successfully" });
     
   } catch (err) {

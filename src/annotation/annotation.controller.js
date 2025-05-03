@@ -13,8 +13,8 @@ export const annotateSentence = async( req,res)=>{
         const {sentence_id , label} = req.body;
     // تحقق إن المهمة موجودة
     const task = await AnnotationTaskModel.findByPk(task_id);
-    if (!task) {
-      return res.status(404).json({ message: "Task not found." });
+    if (!task || task.is_deleted) {
+      return res.status(404).json({ message: "Task not found or deleted" });
     }
 
     // تحقق إن المستخدم هو صاحب المهمة أو مشارك فيها

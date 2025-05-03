@@ -14,7 +14,7 @@ export const owntasks = async (req, res) => {
 
     //  Owned Tasks
     const ownedTasks = await AnnotationTaskModel.findAll({
-      where: { created_by: user_id },
+      where: { created_by: user_id ,is_deleted: false },
       attributes: ['task_id', 'task_name', 'task_description', 'labels', 'annotation_type', 'createdAt'],
     });
 
@@ -24,6 +24,7 @@ export const owntasks = async (req, res) => {
       include: [{
         model: AnnotationTaskModel,
         as: 'Task',
+        where: { is_deleted: false },
         attributes: ['task_id', 'task_name', 'task_description', 'labels', 'annotation_type', 'created_by', 'createdAt'],
       }]
     });
@@ -226,7 +227,7 @@ export const taskcollaborator = async (req, res) => {
   
       // عدد المهام التي يملكها المستخدم
       const ownedTasks = await AnnotationTaskModel.count({
-        where: { created_by: user_id }
+        where: { created_by: user_id , is_deleted:false}
       });
   
       // عدد المهام التي تم مشاركتها مع المستخدم

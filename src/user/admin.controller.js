@@ -20,11 +20,14 @@ export const deleteTasks = async (req, res)=>{
     if(!Array.isArray(taskIds)|| taskIds.length===0){
         return res.status(400).json({message:"Task ids array is required."});
     }
-    await AnnotationTaskModel.destroy({
-        where:{
-            task_id : taskIds
-        }
-    });
+    await AnnotationTaskModel.update(
+      { is_deleted: true }, // soft delete 
+      {
+          where: {
+              task_id: {[Op.in]: taskIds }
+          }
+      }
+  );
     return res.status(200).json({message:"tasks deleted successfully"});
 
     }catch(error){
@@ -77,9 +80,13 @@ export const deleteUsers = async (req, res) => {
   
       const tasks = await AnnotationTaskModel.findAll({
         attributes: ['task_id', 'task_name', 'task_description', 'annotation_type', 'labels', 'status', 'created_by', 'createdAt'],
+        where: {
+          is_deleted: false
+        },
         include: [{
           model: UserModel,
           as: 'Owner',
+          where: {is_deleted: false},
           attributes: ['user_id', 'userName', 'email']
         }]
       });
