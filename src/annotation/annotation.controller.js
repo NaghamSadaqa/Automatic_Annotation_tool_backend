@@ -224,12 +224,10 @@ export const updateAnnotation = async (req, res) => {
 export const  getAnnotatedSentences = async (req, res) => {
   try {
     const { task_id } = req.params;
-    const annotator_id = req.user.user_id;
 
     const annotations = await AnnotationModel.findAll({
       where: {
         task_id,
-        annotator_id,
         label: {
           [Op.not]: 'none' // استثناء الجمل المتخطاة
         }

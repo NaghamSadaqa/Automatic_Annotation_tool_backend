@@ -3,6 +3,7 @@ import  {sequelize} from '../connection.js';
 import UserModel from './user.js';
 import SentenceModel from './sentence.js'
 import AnnotationTaskModel from './annotationtask.js';
+
 const AnnotationModel = sequelize.define("Annotation", {
     annotation_id: {
         type: DataTypes.INTEGER,
