@@ -190,36 +190,6 @@ export const annotateSentence = async( req,res)=>{
 
 
 
-
-export const updateAnnotation = async (req, res) => {
-  try {
-    const { task_id } = req.params;
-    const annotator_id = req.user.user_id;
-    const { sentence_id, label } = req.body;
-
-    const existingAnnotation = await AnnotationModel.findOne({
-      where: { annotator_id, task_id, sentence_id }
-    });
-
-    if (!existingAnnotation) {
-      return res.status(200).json({ message: 'Annotation not found for update' });
-    }
-
-    // Update the label
-    existingAnnotation.label = label;
-    await existingAnnotation.save();
-
-    res.json({ message: 'Annotation updated successfully' });
-
-  } catch (error) {
-    console.error('Update annotation error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-
-
-
 // هون بعرض الجمل الي صنفها المستخدم مغ التصنيف 
 export const  getAnnotatedSentences = async (req, res) => {
   try {
@@ -265,3 +235,61 @@ export const  getAnnotatedSentences = async (req, res) => {
   }
 };
 
+
+
+
+
+   export const updateAnnotation = async (req, res) => {
+  try {
+    const { sentence_id, new_label, task_id } = req.body;
+    const user_id = req.user.user_id;
+
+    // التحقق من وجود المهمة
+    const task = await AnnotationTaskModel.findOne({
+      where: { task_id, is_deleted: false },
+    });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Annotation task not found.' });
+    }
+
+   
+   // التحقق اذا كان المستخدم هو المالك او احد المشاركين
+    const isOwner = task.created_by === user_id;
+    const isCollaborator = await TaskCollaboratorModel.findOne({
+      where: { task_id, user_id }
+    });
+
+    if (!isOwner && !isCollaborator) {
+      return res.status(403).json({ message: 'You are not authorized to modify this annotation.' });
+    }
+
+    // التحقق من وجود الجملة
+    const sentence = await SentenceModel.findOne({
+      where: { sentence_id, task_id }
+    });
+
+    if (!sentence) {
+      return res.status(404).json({ message: 'Sentence not found in this task.' });
+    }
+
+    // التحقق من وجود الانوتيشن للمستخدم
+    const annotation = await AnnotationModel.findOne({
+      where: { sentence_id, annotator_id: user_id, task_id }
+    });
+
+    if (!annotation) {
+      return res.status(404).json({ message: 'Annotation not found for this user.' });
+    }
+
+    // تعديل التصنيف
+    annotation.label = new_label;
+    await annotation.save();
+
+    return res.status(200).json({ message: 'Annotation updated successfully.' });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'An error occurred while updating the annotation.' });
+  }
+};
