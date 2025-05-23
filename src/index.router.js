@@ -13,6 +13,7 @@ import userRouter from './user/user.router.js';
 import taskRouter from './Task/task.router.js';
 import annotationRouter from './annotation/annotation.router.js';
 import adminRouter from './user/admin.router.js';
+import notesRouter from './note/note.router.js';
 import { globalErrorHandler } from './middleware/globalErrorHandler.js';
 import aiRouter from './ai-Api/ai.router.js'
 const initApp = (app,express)=>{
@@ -26,7 +27,8 @@ const initApp = (app,express)=>{
     app.use('/users',userRouter);
     app.use('/annotation',annotationRouter)
     app.use('/admin',adminRouter);
-    app.use('/ai',aiRouter)
+    app.use('/ai',aiRouter);
+    app.use('/notes',notesRouter);
     app.use(globalErrorHandler);
     
 }
