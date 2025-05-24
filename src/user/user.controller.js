@@ -205,7 +205,7 @@ export const taskcollaborator = async (req, res) => {
     try {
       const user = await UserModel.findOne({
         where: { user_id, is_deleted: false },
-        attributes: ['userName', 'email', 'dateofbirth', 'createdAt', 'updatedAt']
+        attributes: ['userName', 'email', 'dateofbirth', 'createdAt', 'updatedAt','role']
       });
   
       if (!user) {
