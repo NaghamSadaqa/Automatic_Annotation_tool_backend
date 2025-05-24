@@ -7,6 +7,7 @@ import {customAlphabet} from 'nanoid';
 import dotenv from 'dotenv';
 import {sendEmail} from '../../utils/SendEmail.js';
 import { AppError } from '../../utils/AppError.js';
+import { generateAccessToken, generateRefreshToken } from '../../utils/tokenUtils.js';
 dotenv.config();
 
  //register 
@@ -110,24 +111,23 @@ export const login = async (req, res) => {
         ErrorFields: null
       });
     }
+   
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-    // إنشاء التوكن
-    const token = jwt.sign(
-      {
-        user_id: user.user_id,
-        name: user.userName,
-        role: user.role
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: '1h' 
-      }
-    );
+    // ارسال refreshToken بالكوكي HttpOnly
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true, // مهم في الانتاج (https)
+      sameSite: 'Strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ايام
+    });
 
     return res.status(200).send({
       message: "Login successful",
-      token
+      token: accessToken
     });
+
 
   } catch (error) {
     return res.status(500).send({
