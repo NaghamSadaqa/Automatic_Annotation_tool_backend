@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
-app.use(cors({ credentials: true, origin: "http://localhost:5173" }));
+app.use(cors({ credentials: true, origin: '*' }));
 app.use(urlencoded({ extended: true, limit: '100mb' }));
 app.use(cookieParser());
 
