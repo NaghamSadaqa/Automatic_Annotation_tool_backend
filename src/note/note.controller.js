@@ -33,7 +33,7 @@ export const getallNotes= async (req, res) => {
   const currentUserId = req.user.user_id;
 
   try {
-    // Step 1: Get all sentence IDs related to this task
+    
     const sentences = await SentenceModel.findAll({
       where: { task_id: task_id },
       attributes: ['sentence_id']
@@ -45,12 +45,12 @@ export const getallNotes= async (req, res) => {
       return res.status(404).json({ message: 'No sentences found for this task' });
     }
 
-    // Step 2: Get notes written to this user on these sentences
+    
     const notes = await NoteModel.findAll({
       where: {
         sentence_id: sentenceIds,
         receiver_id: currentUserId,
-        sender_id: { [Op.ne]: currentUserId } // Exclude self-notes
+        sender_id: { [Op.ne]: currentUserId }
       },
       include: [
         { model: SentenceModel, attributes: ['sentence_id', 'task_id'] },
@@ -59,10 +59,11 @@ export const getallNotes= async (req, res) => {
     });
 
     const formattedNotes = notes.map(note => ({
-      taskId: note.Sentence.task_id,
+      sentenceText: note.sentence_text,
       sentenceId: note.sentence_id,
       noteContent: note.text,
-      notedBy: note.sender.userName
+      notedBy: note.sender.userName,
+      createdAt: note.createdAt
     }));
 
     res.status(200).json({ notes: formattedNotes });
