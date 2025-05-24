@@ -227,3 +227,41 @@ export const resetPassword = async (req, res) => {
 //router.post("/logout", authenticateToken, (req, res) => {
  // return res.status(200).json({ message: "تم تسجيل الخروج بنجاح" });
 //});
+
+
+
+
+
+
+export const refreshToken = (req, res) => {
+  try {
+    // نأخذ الـ refreshToken من الكوكي
+    const token = req.cookies.refreshToken;
+
+    if (!token) {
+      return res.status(401).json({ message: 'Refresh token not found' });
+    }
+
+    // نتحقق من صحة التوكن باستخدام المفتاح الخاص بـ REFRESH_SECRET
+    jwt.verify(token, process.env.REFRESH_SECRET, (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ message: 'Invalid or expired refresh token' });
+      }
+
+      // نصنع توكن جديد باستخدام المفتاح الأساسي
+      const accessToken = jwt.sign(
+        {
+          user_id: decoded.user_id,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+
+      // نرجع التوكن الجديد للفرونت
+      return res.status(200).json({ token: accessToken });
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
