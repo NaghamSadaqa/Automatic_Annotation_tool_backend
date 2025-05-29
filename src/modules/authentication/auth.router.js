@@ -18,5 +18,5 @@ router.post('/sendCode', asyncHandler(sendCode));
 router.post('/verify-code', authTokenSendcode , verifyCode)
 router.post("/reset-password", authTokenSendcode,asyncHandler(resetPassword));
 
-router.get('/refreshToken', refreshToken);
+router.post('/refreshToken', refreshToken);
 export default router;
