@@ -6,4 +6,12 @@ def load_sentiment_model():
     model = AutoModelForSequenceClassification.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     return model, tokenizer, labels 
-    
+
+
+
+def load_sarcasm_model():
+    model_name = "MohamedGalal/arabert-sarcasm-detector"
+    labels = ["not_sarcastic", "sarcastic"]
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    return model, tokenizer, labels

@@ -15,7 +15,11 @@ export const generateAccessToken = (user) => {
 
 export const generateRefreshToken = (user) => {
   return jwt.sign(
-    { user_id: user.user_id },
+    {
+      user_id: user.user_id,
+      name: user.userName,
+      role: user.role,
+    },
     process.env.REFRESH_SECRET,
     { expiresIn: '7d' }
   );
