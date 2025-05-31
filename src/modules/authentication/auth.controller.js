@@ -94,7 +94,7 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     // البحث عن المستخدم حسب الإيميل
-    const user = await UserModel.findOne({ where: { email } });
+    const user = await UserModel.findOne({ where: { email, is_deleted: false } });
 
     if (!user) {
       return res.status(401).send({
