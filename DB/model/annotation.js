@@ -12,12 +12,19 @@ const AnnotationModel = sequelize.define("Annotation", {
     },
     label: {
         type: DataTypes.STRING,
-        allowNull: false,
-    }
+        allowNull: true,
+    },
+  certainty: {
+    type: DataTypes.INTEGER, // نسبة مئوية من 0 إلى 100
+    allowNull: true
+  }
    
 });
 SentenceModel.hasMany(AnnotationModel, { foreignKey: "sentence_id" , onDelete: "CASCADE"});
-AnnotationModel.belongsTo(SentenceModel, { foreignKey: "sentence_id", onDelete: "CASCADE" });
+AnnotationModel.belongsTo(SentenceModel, {
+  foreignKey: 'sentence_id',
+  as: 'Sentence'
+});
 
 UserModel.hasMany(AnnotationModel, { foreignKey: "annotator_id", onDelete: "CASCADE" });
 AnnotationModel.belongsTo(UserModel, { foreignKey: "annotator_id",as: "annotator", onDelete: "CASCADE" });

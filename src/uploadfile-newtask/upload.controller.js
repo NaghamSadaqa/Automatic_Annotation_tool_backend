@@ -41,7 +41,7 @@ export const uploadFile= async (req, res, next) => {
                     .on("data", (row) => {
                         if (!headersProcessed) {
                             const columns = Object.keys(row);
-                            sentenceCol = findColumnName(columns, row, ["sentence", "text", "content"]);
+                            sentenceCol = findColumnName(columns, row, ["sentence", "text", "content","Feed"]);
 
                             // لو مش لاقي عمود نجيب أول عمود موجود فيه داتا
                             if (!sentenceCol && columns.length > 0) {
@@ -76,7 +76,7 @@ export const uploadFile= async (req, res, next) => {
 
             if (sheetData.length > 0) {
                 const columns = Object.keys(sheetData[0]);
-                let sentenceCol = findColumnName(columns, sheetData[0], ["sentence", "text", "content"]);
+                let sentenceCol = findColumnName(columns, sheetData[0], ["sentence", "text", "content","Feed"]);
 
                 if (!sentenceCol && columns.length > 0) {
                     sentenceCol = columns[0];
