@@ -8,7 +8,7 @@ export const distributeSampleToAnnotators = async (req, res) => {
   try {
     const { task_id } = req.params;
 
-    // 1. جلب جميع الجمل الخاصة بالمهمة
+    //  جلب جميع الجمل الخاصة بالمهمة
     const allSentences = await SentenceModel.findAll({
       where: { task_id },
     });
@@ -17,7 +17,7 @@ export const distributeSampleToAnnotators = async (req, res) => {
       return res.status(404).json({ message: 'No sentences found for this task.' });
     }
 
-    // 2. أخذ عينة عشوائية 10%
+    // أخذ عينة عشوائية 10%
     const sampleSize = Math.ceil(allSentences.length * 0.1);
     const shuffled = [...allSentences].sort(() => 0.5 - Math.random());
     const sampledSentences = shuffled.slice(0, sampleSize);
@@ -144,6 +144,49 @@ export const submitAnnotation = async (req, res) => {
 
   } catch (error) {
     console.error("Error submitting annotation:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
+export const getAgreementData = async (req, res) => {
+  try {
+    const { task_id } = req.params;
+
+    // الخطوة 1: جلب كل التصنيفات غير الفارغة لنفس المهمة
+    const annotations = await AnnotationModel.findAll({
+      where: {
+        task_id,
+        label: { [Op.ne]: null }
+      },
+      attributes: ['sentence_id', 'annotator_id', 'label'],
+      raw: true
+    });
+
+    //  تجميع الجمل المصنفة من أكثر من Annotator
+    const grouped = {};
+
+    annotations.forEach((row) => {
+      const key = row.sentence_id;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(row);
+    });
+
+    //  تصفية الجمل اللي فيها Annotatorين فقط
+    const filtered = Object.values(grouped)
+      .filter(group => group.length === 2)
+      .flat();
+
+    if (filtered.length === 0) {
+      return res.status(404).json({ message: "No common annotated sentences between 2 annotators yet." });
+    }
+
+    res.status(200).json({ data: filtered });
+
+  } catch (error) {
+    console.error("Error getting agreement data:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
