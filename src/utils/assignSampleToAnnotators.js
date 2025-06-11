@@ -3,6 +3,7 @@ import SentenceModel from '../../DB/model/sentence.js';
 import InvitationModel from '../../DB/model/invitation.js';
 import AnnotationTaskModel from '../../DB/model/annotationtask.js';
 import { Op } from 'sequelize';
+import axios from 'axios';
 
 export const distributeSampleToAnnotators = async (req, res) => {
   try {
@@ -192,3 +193,61 @@ export const getAgreementData = async (req, res) => {
 };
 
 
+
+export const calculateKappaAgreement = async (req, res) => {
+  try {
+    const { task_id } = req.params;
+
+    // 1. استرجاع كل التصنيفات غير الفارغة لهذه المهمة
+    const annotations = await AnnotationModel.findAll({
+      where: {
+        task_id,
+        label: { [Op.ne]: null }
+      },
+      attributes: ['sentence_id', 'annotator_id', 'label'],
+      raw: true
+    });
+
+    // 2. تجميع التصنيفات حسب الجملة
+    const grouped = {};
+    annotations.forEach(row => {
+      const key = row.sentence_id;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(row);
+    });
+
+    // 3. أخذ فقط الجمل المصنفة من 2 Annotators
+    const labelPairs = [];
+    for (const group of Object.values(grouped)) {
+      if (group.length === 2) {
+        labelPairs.push({
+          annotator1: group[0].label,
+          annotator2: group[1].label
+        });
+      }
+    }
+
+    if (labelPairs.length === 0) {
+      return res.status(400).json({ message: 'No paired annotations to calculate agreement.' });
+    }
+
+    // 4. استخراج قائمتين من التصنيفات
+    const labels1 = labelPairs.map(pair => pair.annotator1);
+    const labels2 = labelPairs.map(pair => pair.annotator2);
+
+    // 5. إرسالهم إلى Flask لحساب الـ Kappa
+    const response = await axios.post('http://localhost:5000/api/annotator-agreement', {
+      labels1,
+      labels2
+    });
+
+    return res.status(200).json({
+      kappa: response.data.kappa,
+      message: response.data.message
+    });
+
+  } catch (error) {
+    console.error("Agreement error:", error);
+    return res.status(500).json({ message: "Error computing agreement" });
+  }
+};
