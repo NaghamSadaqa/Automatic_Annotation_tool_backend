@@ -3,11 +3,10 @@ import {authenticateToken} from '../middleware/auth.js';
 import {Router} from 'express';
 import { calculateAgreementWithAI, calculateKappaAgreement, distributeSampleToAnnotators, getAgreementData, getNextAnnotationSentence, submitAnnotation } from './assignSampleToAnnotators.js';
 const router = Router();
-router.post('/:task_id/distribute',authenticateToken ,distributeSampleToAnnotators);
+
 router.get('/:task_id/next', authenticateToken, getNextAnnotationSentence);
 router.post('/:task_id/annotation', authenticateToken, submitAnnotation);
 
-router.get("/:task_id/agreement-data", authenticateToken, getAgreementData);
 
 
 // هاي الي بدنا نحسب من خلالها التوافق بين 2 انوتيتر رح نجيب الجمل ال10 بالمية

@@ -5,77 +5,6 @@ import AnnotationTaskModel from '../../DB/model/annotationtask.js';
 import { Op } from 'sequelize';
 import axios from 'axios';
 
-export const distributeSampleToAnnotators = async (req, res) => {
-  try {
-    const { task_id } = req.params;
-
-    // جلب عينة الجمل اللي صنفها الذكاء
-    const sampledSentences = await SentenceModel.findAll({
-      where: { task_id, is_sample: true }
-    });
-
-    const sampleSize = sampledSentences.length;
-
-    if (!sampledSentences.length) {
-      return res.status(404).json({ message: 'No sampled sentences found for this task.' });
-    }
-
-    // جلب الأنوتيترز اللي وافقوا على المهمة
-    const acceptedInvitations = await InvitationModel.findAll({
-      where: { task_id, status: 'accepted' },
-    });
-
-    const annotatorIds = acceptedInvitations.map(inv => inv.receiver_id);
-
-    // جلب مالك المهمة
-    const task = await AnnotationTaskModel.findOne({ where: { task_id } });
-
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found.' });
-    }
-
-    const ownerId = task.created_by;
-
-    // إضافة المالك إذا مش موجود
-    if (!annotatorIds.includes(ownerId)) {
-      annotatorIds.push(ownerId);
-    }
-
-    if (!annotatorIds.length) {
-      return res.status(400).json({ message: 'No annotators found for this task.' });
-    }
-
-    // تجهيز بيانات التوزيع
-    const annotations = [];
-
-    for (const sentence of sampledSentences) {
-      for (const annotatorId of annotatorIds) {
-        annotations.push({
-          sentence_id: sentence.sentence_id,
-          task_id,
-          annotator_id: annotatorId,
-          label: null,
-          certainty: null
-        });
-      }
-    }
-
-    // تخزين في جدول الأنوتيشن
-    await AnnotationModel.bulkCreate(annotations);
-
-    res.status(200).json({
-      message: `Distributed ${sampleSize} sampled sentences to ${annotatorIds.length} annotators.`,
-      sampleSize,
-      annotators: annotatorIds
-    });
-
-  } catch (error) {
-    console.error("Error in distributing sample:", error);
-    res.status(500).json({ message: 'Internal server error.' });
-  }
-};
-
-
 
 export const getNextAnnotationSentence = async (req, res) => {
   try {
@@ -145,48 +74,6 @@ export const submitAnnotation = async (req, res) => {
   }
 };
 
-
-
-// هاي خلص ما استخدمتها فعليا
-export const getAgreementData = async (req, res) => {
-  try {
-    const { task_id } = req.params;
-
-    // الخطوة 1: جلب كل التصنيفات غير الفارغة لنفس المهمة
-    const annotations = await AnnotationModel.findAll({
-      where: {
-        task_id,
-        label: { [Op.ne]: null }
-      },
-      attributes: ['sentence_id', 'annotator_id', 'label'],
-      raw: true
-    });
-
-    //  تجميع الجمل المصنفة من أكثر من Annotator
-    const grouped = {};
-
-    annotations.forEach((row) => {
-      const key = row.sentence_id;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(row);
-    });
-
-    //  تصفية الجمل اللي فيها Annotatorين فقط
-    const filtered = Object.values(grouped)
-      .filter(group => group.length === 2)
-      .flat();
-
-    if (filtered.length === 0) {
-      return res.status(404).json({ message: "No common annotated sentences between 2 annotators yet." });
-    }
-
-    res.status(200).json({ data: filtered });
-
-  } catch (error) {
-    console.error("Error getting agreement data:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
 
 
 
