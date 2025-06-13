@@ -24,8 +24,11 @@ const SentenceModel = sequelize.define("Sentence", {
 ai_score: {
   type: DataTypes.FLOAT,
   allowNull: true,
-}
-   
+},
+  is_sample: {
+  type: DataTypes.BOOLEAN,
+  defaultValue: false
+} 
 });
 AnnotationTaskModel.hasMany(SentenceModel, { foreignKey: "task_id", onDelete: "CASCADE"  });
 SentenceModel.belongsTo(AnnotationTaskModel, { foreignKey: "task_id", onDelete: "CASCADE" });

@@ -15,9 +15,10 @@ def annotator_agreement():
 
         kappa = cohen_kappa_score(labels1, labels2)
 
-        message = "Strong agreement" if kappa >= 0.8 else (
-                  "Moderate agreement, consider review" if kappa >= 0.6 else
-                  "Weak agreement – annotators should revisit disagreements")
+        if kappa >= 0.8:
+            message = "Strong agreement – no further action needed."
+        else:
+            message = "Weak agreement – annotators should review disagreements."
 
         return jsonify({
             "kappa": round(kappa, 4),

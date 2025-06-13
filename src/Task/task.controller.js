@@ -163,13 +163,38 @@ export const search = async (req, res) => {
     invitation.status = 'accepted';
     await invitation.save();
 
-    return res.status(200).json({ message: "Invitation accepted and added to task" });
+     // استرجع العينة المحددة مسبقًا is_sample = true
+    const sampledSentences = await SentenceModel.findAll({
+      where: {
+        task_id: invitation.task_id,
+        is_sample: true
+      }
+    });
+
+    // إنشاء نسخ للكولابوريتر من نفس الجمل
+    const annotationEntries = sampledSentences.map(sentence => ({
+      task_id: invitation.task_id,
+      sentence_id: sentence.sentence_id,
+      annotator_id:  receiver_id,
+      label: null,
+      certainty: null
+    }));
+
+    // إدخالهم في جدول الانوتيشن
+    if (annotationEntries.length > 0) {
+      await AnnotationModel.bulkCreate(annotationEntries);
+    }
+
+    return res.status(200).json({ 
+      message: "Invitation accepted, collaborator added, and sample sentences assigned." 
+    });
 
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 
 

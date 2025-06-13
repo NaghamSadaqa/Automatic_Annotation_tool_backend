@@ -1,6 +1,7 @@
 import express from 'express';
 import AnnotationTaskModel from '../../DB/model/annotationtask.js';
 import FileManager from '../../DB/model/filemanager.js';
+import AnnotationModel from '../../DB/model/annotation.js';
 import { AppError } from '../utils/AppError.js';
 import fs from 'fs';
 import xlsx from 'xlsx';
@@ -135,25 +136,43 @@ export const uploadFile= async (req, res, next) => {
 
         
     // الخطوة الجديدة بعد التخزين
-    if (annotation_type === "sentiment" || annotation_type === "sarcasm" || annotation_type === "style") {
-    const aiPredictions = await classifySentences(savedSentences, annotation_type);
+  if (["sentiment", "sarcasm", "style"].includes(annotation_type)) {
+  const sampleSize = Math.ceil(savedSentences.length * 0.1);
+  const shuffled = [...savedSentences].sort(() => 0.5 - Math.random());
+  const sampledSentences = shuffled.slice(0, sampleSize);
 
-    // تحديث كل جملة بالتصنيف الذكي
-    const updatePromises = savedSentences.map((sentence, index) => {
+  const aiPredictions = await classifySentences(sampledSentences, annotation_type);
+
+  const updatePromises = sampledSentences.map((sentence, index) => {
     const prediction = aiPredictions[index];
     if (prediction) {
       return sentence.update({
         ai_label: prediction.label,
-        ai_score: prediction.score
+        ai_score: prediction.score,
+        is_sample: true
       });
     }
     return Promise.resolve();
   });
 
   await Promise.all(updatePromises);
+
+
+       // إضافة نفس العينة للمالك كمهمة أنوتيشن
+      const annotationEntries = sampledSentences.map(s => ({
+        task_id: newTask.task_id,
+        sentence_id: s.sentence_id,
+        annotator_id: uploaded_by,
+        label: null,
+        certainty: null
+      }));
+
+      await AnnotationModel.bulkCreate(annotationEntries);
+    
 }
+
         res.status(201).json({
-            message: `Task created, file uploaded, and ${savedSentences.length} sentences saved successfully!`,
+            message: `Task created, file uploaded, and ${savedSentences.length} sentences saved successfully! 10% of the sentences were sampled, classified using AI, and assigned to the task owner for annotation`,
         });
 
     } catch (error) {

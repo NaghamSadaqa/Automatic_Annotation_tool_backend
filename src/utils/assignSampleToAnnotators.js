@@ -9,19 +9,16 @@ export const distributeSampleToAnnotators = async (req, res) => {
   try {
     const { task_id } = req.params;
 
-    //  جلب جميع الجمل الخاصة بالمهمة
-    const allSentences = await SentenceModel.findAll({
-      where: { task_id },
+    // جلب عينة الجمل اللي صنفها الذكاء
+    const sampledSentences = await SentenceModel.findAll({
+      where: { task_id, is_sample: true }
     });
 
-    if (!allSentences.length) {
-      return res.status(404).json({ message: 'No sentences found for this task.' });
-    }
+    const sampleSize = sampledSentences.length;
 
-    // أخذ عينة عشوائية 10%
-    const sampleSize = Math.ceil(allSentences.length * 0.1);
-    const shuffled = [...allSentences].sort(() => 0.5 - Math.random());
-    const sampledSentences = shuffled.slice(0, sampleSize);
+    if (!sampledSentences.length) {
+      return res.status(404).json({ message: 'No sampled sentences found for this task.' });
+    }
 
     // جلب الأنوتيترز اللي وافقوا على المهمة
     const acceptedInvitations = await InvitationModel.findAll({
@@ -48,7 +45,7 @@ export const distributeSampleToAnnotators = async (req, res) => {
       return res.status(400).json({ message: 'No annotators found for this task.' });
     }
 
-    //   بيانات التوزيع
+    // تجهيز بيانات التوزيع
     const annotations = [];
 
     for (const sentence of sampledSentences) {
@@ -63,12 +60,11 @@ export const distributeSampleToAnnotators = async (req, res) => {
       }
     }
 
-    //  تخزين في جدول الأنوتيشن
+    // تخزين في جدول الأنوتيشن
     await AnnotationModel.bulkCreate(annotations);
 
-   
     res.status(200).json({
-      message: `Distributed ${sampleSize} sentences to ${annotatorIds.length} annotators.`,
+      message: `Distributed ${sampleSize} sampled sentences to ${annotatorIds.length} annotators.`,
       sampleSize,
       annotators: annotatorIds
     });
@@ -151,7 +147,7 @@ export const submitAnnotation = async (req, res) => {
 
 
 
-
+// هاي خلص ما استخدمتها فعليا
 export const getAgreementData = async (req, res) => {
   try {
     const { task_id } = req.params;
@@ -194,11 +190,12 @@ export const getAgreementData = async (req, res) => {
 
 
 
+
+
 export const calculateKappaAgreement = async (req, res) => {
   try {
     const { task_id } = req.params;
 
-    // 1. استرجاع كل التصنيفات غير الفارغة لهذه المهمة
     const annotations = await AnnotationModel.findAll({
       where: {
         task_id,
@@ -208,7 +205,6 @@ export const calculateKappaAgreement = async (req, res) => {
       raw: true
     });
 
-    // 2. تجميع التصنيفات حسب الجملة
     const grouped = {};
     annotations.forEach(row => {
       const key = row.sentence_id;
@@ -216,14 +212,24 @@ export const calculateKappaAgreement = async (req, res) => {
       grouped[key].push(row);
     });
 
-    // 3. أخذ فقط الجمل المصنفة من 2 Annotators
     const labelPairs = [];
-    for (const group of Object.values(grouped)) {
+    const disagreements = [];
+
+    for (const [sentenceId, group] of Object.entries(grouped)) {
       if (group.length === 2) {
+        const [a1, a2] = group;
         labelPairs.push({
-          annotator1: group[0].label,
-          annotator2: group[1].label
+          annotator1: a1.label,
+          annotator2: a2.label
         });
+
+        if (a1.label !== a2.label) {
+          disagreements.push({
+            sentence_id: sentenceId,
+            annotator1_label: a1.label,
+            annotator2_label: a2.label
+          });
+        }
       }
     }
 
@@ -231,23 +237,115 @@ export const calculateKappaAgreement = async (req, res) => {
       return res.status(400).json({ message: 'No paired annotations to calculate agreement.' });
     }
 
-    // 4. استخراج قائمتين من التصنيفات
-    const labels1 = labelPairs.map(pair => pair.annotator1);
-    const labels2 = labelPairs.map(pair => pair.annotator2);
+    const labels1 = labelPairs.map(p => p.annotator1);
+    const labels2 = labelPairs.map(p => p.annotator2);
 
-    // 5. إرسالهم إلى Flask لحساب الـ Kappa
     const response = await axios.post('http://localhost:5000/api/annotator-agreement', {
       labels1,
       labels2
     });
 
-    return res.status(200).json({
+    const result = {
       kappa: response.data.kappa,
       message: response.data.message
-    });
+    };
+
+    if (response.data.kappa < 0.8) {
+      result.disagreements = disagreements;
+    }
+
+    return res.status(200).json(result);
 
   } catch (error) {
     console.error("Agreement error:", error);
     return res.status(500).json({ message: "Error computing agreement" });
+  }
+};
+
+
+
+
+
+
+
+export const calculateAgreementWithAI = async (req, res) => {
+  try {
+    const { task_id } = req.params;
+
+    // جلب الجمل التي تم تصنيفها من الذكاء (is_sample = true)
+    const sampleSentences = await SentenceModel.findAll({
+      where: { task_id, is_sample: true },
+      include: [{ model: AnnotationModel }]
+    });
+
+    if (!sampleSentences.length) {
+      return res.status(404).json({ message: "No AI-classified sample sentences found." });
+    }
+
+    const aiLabels = [];
+    const humanLabels = [];
+
+    for (const sentence of sampleSentences) {
+      const aiLabel = sentence.ai_label;
+
+      // نختار أفضل تصنيف بشري حسب أعلى درجة تأكد
+      const bestHumanAnnotation = sentence.Annotations
+        .filter(a => a.label)
+        .sort((a, b) => b.certainty - a.certainty)[0];
+
+      if (aiLabel && bestHumanAnnotation) {
+        aiLabels.push(aiLabel);
+        humanLabels.push(bestHumanAnnotation.label);
+      }
+    }
+
+    if (!aiLabels.length || !humanLabels.length || aiLabels.length !== humanLabels.length) {
+      return res.status(400).json({ message: "Mismatch or missing labels for agreement calculation." });
+    }
+
+    // إرسال التصنيفات لفلاسك لحساب التوافق
+    const flaskResponse = await axios.post("http://localhost:5000/agreement", {
+      ai_labels: aiLabels,
+      human_labels: humanLabels
+    });
+
+    const { agreement_percentage } = flaskResponse.data;
+
+    // لو التوافق جيد، نصنف باقي الجمل تلقائياً
+    if (agreement_percentage >= 85) {
+      console.log("High agreement - proceeding to classify the rest of the sentences with AI.");
+
+      const remainingSentences = await SentenceModel.findAll({
+        where: { task_id, is_sample: false }
+      });
+
+      const annotationType = req.query.annotation_type || 'sentiment'; // أو sarcasm أو style
+
+      const predictions = await classifySentences(remainingSentences, annotationType);
+
+      const updatePromises = remainingSentences.map((sentence, index) => {
+        const prediction = predictions[index];
+        if (prediction) {
+          return sentence.update({
+            ai_label: prediction.label,
+            ai_score: prediction.score
+          });
+        }
+        return Promise.resolve();
+      });
+
+      await Promise.all(updatePromises);
+    }
+
+    res.status(200).json({
+      agreement_percentage,
+      message: agreement_percentage >= 85
+        ? "High agreement. Remaining sentences classified by AI."
+        : "Low agreement. Please improve model performance before auto-classifying."
+    });
+
+  } catch (error) {
+    console.error("Error calculating agreement with AI:", error.message);
+    res.status(500).json({ message: "Internal server error." });
   }
 };
