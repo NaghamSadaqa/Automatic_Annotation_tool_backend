@@ -1,17 +1,20 @@
 
 import {authenticateToken} from '../middleware/auth.js';
 import {Router} from 'express';
-import { calculateAgreementWithAI, calculateKappaAgreement, distributeSampleToAnnotators, getAgreementData, getNextAnnotationSentence, submitAnnotation } from './assignSampleToAnnotators.js';
+import { calculateAgreementWithAI, calculateKappaAgreement, getNextAnnotationSentence, submitAnnotation } from './assignSampleToAnnotators.js';
 const router = Router();
 
 router.get('/:task_id/next', authenticateToken, getNextAnnotationSentence);
-router.post('/:task_id/annotation', authenticateToken, submitAnnotation);
+
+
 
 
 
 // هاي الي بدنا نحسب من خلالها التوافق بين 2 انوتيتر رح نجيب الجمل ال10 بالمية
 //  الي صنفوهم ونبعتهم للفلاسك الذكاء عشان يحسب الانتر انوتيتر اجريمنت ويرجعلنا اذا بينهم توافق او لا 
-router.get('/:task_id/agreement', authenticateToken, calculateKappaAgreement); 
+// طبعا بصنفو بدخلو تصنيف الجملة وال id
+// درجة تاكدهم من التصنيف بس يوصلو لاخر جملة رح يرجع فلاسك ريسبونس انه كم نسبة التوافق بينهم
+router.post('/:task_id/annotation', authenticateToken, submitAnnotation);
 
 
 router.get('/:task_id/Ai-human-agreement', calculateAgreementWithAI);

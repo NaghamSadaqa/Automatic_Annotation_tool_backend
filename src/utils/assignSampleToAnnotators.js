@@ -45,110 +45,118 @@ export const getNextAnnotationSentence = async (req, res) => {
 
 
 export const submitAnnotation = async (req, res) => {
-  try {
+try {
     const annotator_id = req.user.user_id;
     const { task_id } = req.params;
-    const { sentence_id,  label, certainty } = req.body;
+    const { sentence_id, label, certainty } = req.body;
 
     if (!label || !certainty) {
       return res.status(400).json({ message: "Label and certainty are required" });
     }
+        const existingAnnotation = await AnnotationModel.findOne({
+      where: { task_id, sentence_id, annotator_id }
+    });
 
-    // نحدث فقط السطر المخصص لهذا الأنوتيتر
-    const updated = await AnnotationModel.update(
+    if (!existingAnnotation) {
+      return res.status(404).json({
+        message: "Sentence not found in your assigned annotations"
+      });
+    }
+
+    // Update current annotation
+    await AnnotationModel.update(
       { label, certainty },
       {
-        where: {
-          sentence_id,
-          task_id,
-          annotator_id
-        }
+        where: { task_id, sentence_id, annotator_id }
       }
     );
 
-    res.status(200).json({ message: "Annotation submitted successfully" });
+    // Check if annotator finished all assigned sentences
+    const totalAssigned = await AnnotationModel.count({ where: { task_id, annotator_id } });
+    const totalLabeled = await AnnotationModel.count({
+      where: {
+        task_id,
+        annotator_id,
+        label: { [Op.ne]: null }
+      }
+    });
+
+    const isFinalSentence = totalAssigned === totalLabeled;
+    let flaskResponse;
+
+    if (isFinalSentence) {
+      // Get all labeled annotations from all annotators for the task
+      const annotations = await AnnotationModel.findAll({
+        where: {
+          task_id,
+          label: { [Op.ne]: null }
+        },
+        attributes: ['sentence_id', 'annotator_id', 'label'],
+        raw: true
+      });
+
+      const grouped = {};
+      annotations.forEach(row => {
+        const key = row.sentence_id;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(row);
+      });
+
+      const labelPairs = [];
+      const disagreements = [];
+
+      for (const [sentenceId, group] of Object.entries(grouped)) {
+        if (group.length === 2) {
+          const [a1, a2] = group;
+          labelPairs.push({ annotator1: a1.label, annotator2: a2.label });
+
+          if (a1.label !== a2.label) {
+            disagreements.push({
+              sentence_id: sentenceId,
+              annotator1_label: a1.label,
+              annotator2_label: a2.label
+            });
+          }
+        }
+      }
+
+      if (labelPairs.length > 0) {
+        const labels1 = labelPairs.map(p => p.annotator1);
+        const labels2 = labelPairs.map(p => p.annotator2);
+
+        const flaskRes = await axios.post('http://localhost:5000/api/annotator-agreement', {
+          labels1,
+          labels2
+        });
+
+        flaskResponse = {
+          kappa: flaskRes.data.kappa,
+          message: flaskRes.data.message,
+        };
+
+        if (flaskRes.data.kappa < 0.8) {
+          flaskResponse.disagreements = disagreements;
+        }
+      }
+
+      return res.status(202).send({
+        message: "You have finished all your assigned sentences",
+        isFinished: true,
+        flaskResponse
+      });
+    }
+
+    // Default response if not finished
+    return res.status(200).json({
+      message: "Annotation submitted successfully",
+      isFinished: false
+    });
 
   } catch (error) {
     console.error("Error submitting annotation:", error);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
-
-
-
-
-
-
-export const calculateKappaAgreement = async (req, res) => {
-  try {
-    const { task_id } = req.params;
-
-    const annotations = await AnnotationModel.findAll({
-      where: {
-        task_id,
-        label: { [Op.ne]: null }
-      },
-      attributes: ['sentence_id', 'annotator_id', 'label'],
-      raw: true
-    });
-
-    const grouped = {};
-    annotations.forEach(row => {
-      const key = row.sentence_id;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(row);
-    });
-
-    const labelPairs = [];
-    const disagreements = [];
-
-    for (const [sentenceId, group] of Object.entries(grouped)) {
-      if (group.length === 2) {
-        const [a1, a2] = group;
-        labelPairs.push({
-          annotator1: a1.label,
-          annotator2: a2.label
-        });
-
-        if (a1.label !== a2.label) {
-          disagreements.push({
-            sentence_id: sentenceId,
-            annotator1_label: a1.label,
-            annotator2_label: a2.label
-          });
-        }
-      }
-    }
-
-    if (labelPairs.length === 0) {
-      return res.status(400).json({ message: 'No paired annotations to calculate agreement.' });
-    }
-
-    const labels1 = labelPairs.map(p => p.annotator1);
-    const labels2 = labelPairs.map(p => p.annotator2);
-
-    const response = await axios.post('http://localhost:5000/api/annotator-agreement', {
-      labels1,
-      labels2
-    });
-
-    const result = {
-      kappa: response.data.kappa,
-      message: response.data.message
-    };
-
-    if (response.data.kappa < 0.8) {
-      result.disagreements = disagreements;
-    }
-
-    return res.status(200).json(result);
-
-  } catch (error) {
-    console.error("Agreement error:", error);
-    return res.status(500).json({ message: "Error computing agreement" });
-  }
-};
-
 
 
 
