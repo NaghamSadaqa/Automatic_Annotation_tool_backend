@@ -2,6 +2,7 @@ import AnnotationModel from '../../DB/model/annotation.js';
 import SentenceModel from '../../DB/model/sentence.js';
 import InvitationModel from '../../DB/model/invitation.js';
 import AnnotationTaskModel from '../../DB/model/annotationtask.js';
+import {classifySentences} from "./aiHelper.js";
 import { Op } from 'sequelize';
 import axios from 'axios';
 
