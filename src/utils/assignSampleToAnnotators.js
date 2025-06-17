@@ -2,10 +2,14 @@ import AnnotationModel from '../../DB/model/annotation.js';
 import SentenceModel from '../../DB/model/sentence.js';
 import InvitationModel from '../../DB/model/invitation.js';
 import AnnotationTaskModel from '../../DB/model/annotationtask.js';
+import UserModel from '../../DB/model/user.js';
 import {classifySentences} from "./aiHelper.js";
 import { Op } from 'sequelize';
 import axios from 'axios';
-
+import { Parser } from "json2csv";
+import ExcelJS from "exceljs";
+import fs from "fs";
+import path from "path";
 
 export const getNextAnnotationSentence = async (req, res) => {
   try {
@@ -215,7 +219,7 @@ export const calculateAgreementWithAI = async (req, res) => {
         where: { task_id, is_sample: false }
       });
 
-      const annotationType = req.query.annotation_type || 'sentiment'; // أو sarcasm أو style
+      const annotationType = req.query.annotation_type || 'sentiment' ;
 
       const predictions = await classifySentences(remainingSentences, annotationType);
 
@@ -243,5 +247,99 @@ export const calculateAgreementWithAI = async (req, res) => {
   } catch (error) {
     console.error("Error calculating agreement with AI:", error.message);
     res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+
+
+
+
+
+
+
+export const exportFinalLabels1 = async (req, res) => {
+  try {
+    const { task_id } = req.params;
+    const format = req.query.format || "csv";
+
+    // استرجاع جميع الجمل الخاصة بالمهمة
+    const sentences = await SentenceModel.findAll({
+      where: { task_id },
+      include: [
+        {
+          model: AnnotationModel,
+          as: "Annotations",
+          where: {
+            label: { [Op.ne]: null },
+          },
+          required: false, // حتى لو ما فيها أنوتيشن ترجع
+        },
+      ],
+    });
+
+    const records = sentences.map(sentence => {
+      let finalLabel = null;
+      let source = "none";
+
+      // تصنيف بشري موجود؟
+      if (sentence.Annotations?.length > 0) {
+        // نختار التصنيف الأعلى من حيث درجة الثقة
+        const bestManual = sentence.Annotations.reduce((prev, curr) =>
+          (prev.certainty || 0) > (curr.certainty || 0) ? prev : curr
+        );
+        finalLabel = bestManual.label;
+        source = "human";
+      }
+
+      // إذا ما في تصنيف يدوي، مناخد الذكاء
+      else if (sentence.ai_label) {
+        finalLabel = sentence.ai_label;
+        source = "ai";
+      }
+
+      return {
+        sentence_id: sentence.sentence_id,
+        sentence_text: sentence.sentence_text,
+        final_label: finalLabel || "Unlabeled",
+        source,
+      };
+    });
+
+    // Excel تصدير كـ
+    if (format === "excel") {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Final Labels");
+
+      worksheet.columns = [
+        { header: "Sentence ID", key: "sentence_id", width: 15 },
+        { header: "Sentence Text", key: "sentence_text", width: 50 },
+        { header: "Final Label", key: "final_label", width: 20 },
+        { header: "Source", key: "source", width: 10 },
+      ];
+
+      worksheet.addRows(records);
+
+      const filePath = path.join("exports", `final_labels_${Date.now()}.xlsx`);
+      await workbook.xlsx.writeFile(filePath);
+      return res.download(filePath, "final_labels.xlsx", () => {
+        fs.unlinkSync(filePath);
+      });
+
+    } else {
+      // CSV
+      const fields = ["sentence_id", "sentence_text", "final_label", "source"];
+      const parser = new Parser({ fields });
+      const csv = parser.parse(records);
+
+      const filePath = path.join("exports", `final_labels_${Date.now()}.csv`);
+      fs.writeFileSync(filePath, csv);
+      return res.download(filePath, "final_labels.csv", () => {
+        fs.unlinkSync(filePath);
+      });
+    }
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Export failed", error: error.message });
   }
 };

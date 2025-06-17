@@ -7,7 +7,7 @@ sarcasm_bp = Blueprint("sarcasm", __name__)
 model, tokenizer, labels = load_sarcasm_model()
 pipe = pipeline("text-classification", model=model, tokenizer=tokenizer)
 
-# دالة تنظيف النصوص - بإمكانك تستدخمي نفس دالة clean_text تبع sentiment
+
 def clean_text(text):
     text = re.sub(r"http\S+|www.\S+", "", text)
     text = re.sub(r"[^ء-ي\s]", "", text)

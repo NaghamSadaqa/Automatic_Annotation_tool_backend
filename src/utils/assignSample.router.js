@@ -1,7 +1,7 @@
 
 import {authenticateToken} from '../middleware/auth.js';
 import {Router} from 'express';
-import { calculateAgreementWithAI,  getNextAnnotationSentence, submitAnnotation } from './assignSampleToAnnotators.js';
+import { calculateAgreementWithAI,  getNextAnnotationSentence, submitAnnotation,  exportFinalLabels1 } from './assignSampleToAnnotators.js';
 const router = Router();
 
 router.get('/:task_id/next', authenticateToken, getNextAnnotationSentence);
@@ -18,4 +18,6 @@ router.post('/:task_id/annotation', authenticateToken, submitAnnotation);
 
 
 router.get('/:task_id/Ai-human-agreement',authenticateToken ,calculateAgreementWithAI);
+
+router.get('/:task_id/export-final-labels',authenticateToken ,exportFinalLabels1);
 export default router;
