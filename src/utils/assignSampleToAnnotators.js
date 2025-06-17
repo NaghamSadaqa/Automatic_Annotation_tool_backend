@@ -343,3 +343,51 @@ export const exportFinalLabels1 = async (req, res) => {
     res.status(500).json({ message: "Export failed", error: error.message });
   }
 };
+
+
+
+export const getSampleAnnotations = async (req, res) => {
+  try {
+    const { task_id } = req.params;
+
+    const sampledSentences = await SentenceModel.findAll({
+      where: {
+        task_id,
+        is_sample: true
+      },
+      include: [
+        {
+          model: AnnotationModel,
+          include: [
+            {
+              model: UserModel,
+              as: 'annotator',
+              attributes: ['user_id', 'userName']
+            }
+          ],
+          attributes: ['label', 'certainty', 'createdAt', 'annotator_id']
+        }
+      ],
+      attributes: ['sentence_id', 'sentence_text', 'ai_label', 'ai_score']
+    });
+
+    const response = sampledSentences.map(sentence => ({
+      sentence_id: sentence.sentence_id,
+      sentence_text: sentence.sentence_text,
+      ai_label: sentence.ai_label,
+      ai_score: sentence.ai_score,
+      annotations: sentence.Annotations.map(a => ({
+        user_id: a.annotator.user_id,
+        user_name: a.annotator.userName,
+        label: a.label,
+        certainty: a.certainty,
+        created_at: a.createdAt
+      }))
+    }));
+
+    res.json(response);
+  } catch (error) {
+    console.error("Error in getSampleAnnotations:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
