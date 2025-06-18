@@ -241,7 +241,7 @@ export const  getAnnotatedSentences = async (req, res) => {
 
    export const updateAnnotation = async (req, res) => {
   try {
-    const { sentence_id, new_label, task_id } = req.body;
+    const { sentence_id, new_label, task_id,  certainty} = req.body;
     const user_id = req.user.user_id;
 
     // التحقق من وجود المهمة
@@ -284,6 +284,14 @@ export const  getAnnotatedSentences = async (req, res) => {
 
     // تعديل التصنيف
     annotation.label = new_label;
+   if (certainty !== undefined) {
+      const certaintyValue = Number(certainty);
+      if (isNaN(certaintyValue) || certaintyValue < 0 || certaintyValue > 100) {
+        return res.status(400).json({ message: 'Certainty must be a number between 0 and 100.' });
+      }
+      annotation.certainty = certaintyValue;
+    }
+
     await annotation.save();
 
     return res.status(200).json({ message: 'Annotation updated successfully.' });
