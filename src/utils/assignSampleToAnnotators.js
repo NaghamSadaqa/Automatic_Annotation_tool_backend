@@ -358,6 +358,7 @@ export const getSampleAnnotations = async (req, res) => {
       include: [
         {
           model: AnnotationModel,
+          as: "Annotations",
           include: [
             {
               model: UserModel,

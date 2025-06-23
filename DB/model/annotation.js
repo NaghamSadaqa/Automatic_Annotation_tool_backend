@@ -20,7 +20,7 @@ const AnnotationModel = sequelize.define("Annotation", {
   }
    
 });
-SentenceModel.hasMany(AnnotationModel, { foreignKey: "sentence_id" , onDelete: "CASCADE"});
+SentenceModel.hasMany(AnnotationModel, { foreignKey: "sentence_id" , as: "Annotations",onDelete: "CASCADE"});
 AnnotationModel.belongsTo(SentenceModel, {
   foreignKey: 'sentence_id',
   as: 'Sentence'

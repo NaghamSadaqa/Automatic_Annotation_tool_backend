@@ -30,7 +30,11 @@ const AnnotationTaskModel = sequelize.define("AnnotationTask", {
     is_deleted: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
-      }
+      }, 
+  deadline: {
+  type: DataTypes.INTEGER, // عدد الأيام
+  allowNull: true, // ممكن نخليه null إذا ما تم تحديده
+}
    
 });
 UserModel.hasMany(AnnotationTaskModel, { foreignKey: "created_by" , as: "OwnedTasks" });
