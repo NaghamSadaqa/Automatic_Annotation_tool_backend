@@ -10,8 +10,8 @@ export const classifySentences = async (sentences, annotationType) => {
     case 'sarcasm':
       flaskUrl = 'http://localhost:5000/predict/sarcasm';
       break;
-    case 'style':
-      flaskUrl = 'http://localhost:5000/predict/style';
+    case 'stance':
+      flaskUrl = 'http://localhost:5000/predict/stance';
       break;
     default:
       throw new Error("Unsupported annotation type for AI classification");
