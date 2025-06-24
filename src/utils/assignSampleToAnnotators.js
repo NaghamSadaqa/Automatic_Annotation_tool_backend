@@ -175,7 +175,7 @@ export const calculateAgreementWithAI = async (req, res) => {
     // جلب الجمل التي تم تصنيفها من الذكاء (is_sample = true)
     const sampleSentences = await SentenceModel.findAll({
       where: { task_id, is_sample: true },
-      include: [{ model: AnnotationModel }]
+      include: [{ model: AnnotationModel, as: 'Annotations' }]
     });
 
     if (!sampleSentences.length) {
