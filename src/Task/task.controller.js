@@ -344,7 +344,7 @@ export const getTaskDetails = async (req, res) => {
 
   try {
     const task = await AnnotationTaskModel.findByPk(task_id, {
-      attributes: ['task_id', 'task_name', 'task_description', 'annotation_type', 'labels', 'created_by', 'createdAt'],
+      attributes: ['task_id', 'task_name', 'task_description', 'annotation_type', 'labels', 'created_by', 'createdAt','deadline'],
     });
 
     if (!task) {
@@ -360,6 +360,13 @@ export const getTaskDetails = async (req, res) => {
     if (!isOwner && !isCollaborator) {
       return res.status(403).json({ message: 'Access denied: You are not authorized to view this task.' });
     } // سألت الفرونت عنها رح نشوف نخليها او كيف
+    let expireDate = null;
+    if (task.deadline && task.createdAt) {
+      const createdAtDate = new Date(task.createdAt);
+      createdAtDate.setDate(createdAtDate.getDate() + task.deadline);
+      expireDate = createdAtDate;
+    }
+
 
     // عدد الجمل الكليّة
     const totalSentences = await SentenceModel.count({ where: { task_id } });
@@ -368,7 +375,10 @@ export const getTaskDetails = async (req, res) => {
     const completedByUser = await AnnotationModel.count({
       where: {
         task_id,
-        annotator_id
+        annotator_id,
+        label:{
+          [Op.ne]:null
+        }
       }
     });
 
@@ -420,7 +430,9 @@ export const getTaskDetails = async (req, res) => {
       status,
       collaborators: collaboratorList,
       annotatedCount,
-      skippedCount
+      skippedCount, 
+       deadline: task.deadline,    
+      expireDate: expireDate
     });
 
   } catch (error) {

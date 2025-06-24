@@ -10,7 +10,7 @@ import SentenceModel from '../../DB/model/sentence.js';
 import { classifySentences } from "../utils/aiHelper.js";
 
 export const uploadFile= async (req, res, next) => {
-    const { task_name, task_description, annotation_type, labels } = req.body;
+    const { task_name, task_description, annotation_type, labels , deadline } = req.body;
     const uploaded_by = req.user.user_id;
 
     if (!req.file) {
@@ -114,7 +114,8 @@ export const uploadFile= async (req, res, next) => {
             task_description,
             annotation_type,
             labels,
-            created_by: uploaded_by
+            created_by: uploaded_by,
+            deadline
         });
 
         // تخزين بيانات الملف
