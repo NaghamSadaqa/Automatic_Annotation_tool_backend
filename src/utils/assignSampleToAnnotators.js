@@ -71,7 +71,7 @@ export const submitAnnotation = async (req, res) => {
       });
     }
 
-    // Update current annotation
+    
     await AnnotationModel.update(
       { label, certainty },
       {
