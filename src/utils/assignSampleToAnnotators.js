@@ -48,6 +48,9 @@ export const getNextAnnotationSentence = async (req, res) => {
   }
 };
 
+
+
+
 export const submitAnnotation = async (req, res) => {
   try {
     const annotator_id = req.user.user_id;
@@ -76,7 +79,7 @@ export const submitAnnotation = async (req, res) => {
       }
     );
 
-    // Check if annotator finished all assigned sentences
+    // هون منفحص اذا خلصو كل الجمل
     const totalAssigned = await AnnotationModel.count({ where: { task_id, annotator_id } });
     const totalLabeled = await AnnotationModel.count({
       where: {
@@ -90,11 +93,11 @@ export const submitAnnotation = async (req, res) => {
     let flaskResponse;
 
     if (isFinalSentence) {
-      // 🔹 Count total annotators in the task (collaborators + task owner)
+      //منحسب عدد الانوتيتر بالمهمة مالك المهمة + الكولابوريتور 
       const taskCollaborators = await TaskCollaboratorModel.findAll({ where: { task_id } });
       const totalAnnotators = taskCollaborators.length + 1;
 
-      // 🔹 Count how many annotators have completed their annotations
+    
       const completedAnnotators = await AnnotationModel.findAll({
         where: {
           task_id,
@@ -106,7 +109,7 @@ export const submitAnnotation = async (req, res) => {
 
       const totalCompletedAnnotators = completedAnnotators.length;
 
-      // 🔹 If all annotators are done, calculate agreement
+      //اذا جميع الانوتيتر خلصو احسب التوافق بينهم
       if (totalCompletedAnnotators === totalAnnotators) {
         const annotations = await AnnotationModel.findAll({
           where: {
@@ -168,16 +171,16 @@ export const submitAnnotation = async (req, res) => {
         });
 
       } else {
-        // Not all annotators are done yet
+        // اذا مش الكل مخلص 
         return res.status(202).send({
-          message: "Thank you, You have completed your annotations.\n Agreement results will be available once all team members finish.",
+          message: "Thank you, You have completed your annotations.Agreement results will be available once all team members finish.",
           isFinished: true,
           flaskResponse: null
         });
       }
     }
 
-    // Default response if not finished yet
+  // هاي ريسبونس انه الانوتيشن تم
     return res.status(200).json({
       message: "Annotation submitted successfully",
       isFinished: false
@@ -188,141 +191,6 @@ export const submitAnnotation = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-export const submitAnnotation1 = async (req, res) => {
-try {
-    const annotator_id = req.user.user_id;
-    const { task_id } = req.params;
-    const { sentence_id, label, certainty } = req.body;
-
-    if (!label || !certainty) {
-      return res.status(400).json({ message: "Label and certainty are required" });
-    }
-        const existingAnnotation = await AnnotationModel.findOne({
-      where: { task_id, sentence_id, annotator_id }
-    });
-
-    if (!existingAnnotation) {
-      return res.status(404).json({
-        message: "Sentence not found in your assigned annotations"
-      });
-    }
-
-    // Update current annotation
-    await AnnotationModel.update(
-      { label, certainty },
-      {
-        where: { task_id, sentence_id, annotator_id }
-      }
-    );
-
-    // Check if annotator finished all assigned sentences
-    const totalAssigned = await AnnotationModel.count({ where: { task_id, annotator_id } });
-    const totalLabeled = await AnnotationModel.count({
-      where: {
-        task_id,
-        annotator_id,
-        label: { [Op.ne]: null }
-      }
-    });
-
-    const isFinalSentence = totalAssigned === totalLabeled;
-    let flaskResponse;
-
-    if (isFinalSentence) {
-      // Get all labeled annotations from all annotators for the task
-      const annotations = await AnnotationModel.findAll({
-        where: {
-          task_id,
-          label: { [Op.ne]: null }
-        },
-        attributes: ['sentence_id', 'annotator_id', 'label'],
-        raw: true
-      });
-
-      const grouped = {};
-      annotations.forEach(row => {
-        const key = row.sentence_id;
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(row);
-      });
-
-      const labelPairs = [];
-      const disagreements = [];
-
-      for (const [sentenceId, group] of Object.entries(grouped)) {
-        if (group.length === 2) {
-          const [a1, a2] = group;
-          labelPairs.push({ annotator1: a1.label, annotator2: a2.label });
-
-          if (a1.label !== a2.label) {
-            disagreements.push({
-              sentence_id: sentenceId,
-              annotator1_label: a1.label,
-              annotator2_label: a2.label
-            });
-          }
-        }
-      }
-
-      if (labelPairs.length > 0) {
-        const labels1 = labelPairs.map(p => p.annotator1);
-        const labels2 = labelPairs.map(p => p.annotator2);
-
-        const flaskRes = await axios.post('http://localhost:5000/api/annotator-agreement', {
-          labels1,
-          labels2
-        });
-
-        flaskResponse = {
-          kappa: flaskRes.data.kappa,
-          message: flaskRes.data.message,
-        };
-
-        if (flaskRes.data.kappa < 0.8) {
-          flaskResponse.disagreements = disagreements;
-        }
-      }
-
-      return res.status(202).send({
-        message: "You have finished all your assigned sentences",
-        isFinished: true,
-        flaskResponse
-      });
-    }
-
-    // Default response if not finished
-    return res.status(200).json({
-      message: "Annotation submitted successfully",
-      isFinished: false
-    });
-
-  } catch (error) {
-    console.error("Error submitting annotation:", error);
-    return res.status(500).json({ message: "Server error" });
-  }
-};
-
 
 
 
