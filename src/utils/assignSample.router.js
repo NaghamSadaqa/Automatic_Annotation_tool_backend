@@ -1,10 +1,11 @@
 
 import {authenticateToken} from '../middleware/auth.js';
 import {Router} from 'express';
-import { calculateAgreementWithAI,  getNextAnnotationSentence, submitAnnotation,  exportFinalLabels1, getSampleAnnotations } from './assignSampleToAnnotators.js';
+import { calculateAgreementWithAI, StartResolvingDisagreements, getNextAnnotationSentence, submitAnnotation,  exportFinalLabels1, getSampleAnnotations } from './assignSampleToAnnotators.js';
 const router = Router();
 
 router.get('/:task_id/next', authenticateToken, getNextAnnotationSentence);
+router.post('/:task_id/start-resolving', authenticateToken, StartResolvingDisagreements);
 
 
 
