@@ -12,12 +12,15 @@ import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
 
-export const getNextAnnotationSentence = async (req, res) => {
+
+
+
+  export const getNextAnnotationSentence = async (req, res) => {
   try {
     const annotator_id = req.user.user_id;
     const { task_id } = req.params;
 
-    // نبحث عن أول جملة مخصصة لهذا اليوزر ولم يصنفها بعد
+    // نبحث عن أول جملة غير مصنفة لهذا المستخدم
     const annotation = await AnnotationModel.findOne({
       where: {
         task_id,
@@ -33,53 +36,7 @@ export const getNextAnnotationSentence = async (req, res) => {
       ]
     });
 
-    if (!annotation) {
-      return res.status(200).json({ message: "No more unannotated sentences." });
-    }
-
-    res.status(200).json({
-      sentence_id: annotation.sentence_id,
-      sentence_text: annotation.Sentence.sentence_text
-    });
-
-  } catch (error) {
-    console.error("Error fetching sentence:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-
-
-
-export const submitAnnotation = async (req, res) => {
-  try {
-    const annotator_id = req.user.user_id;
-    const { task_id } = req.params;
-    const { sentence_id, label, certainty } = req.body;
-
-    if (!label || !certainty) {
-      return res.status(400).json({ message: "Label and certainty are required" });
-    }
-
-    const existingAnnotation = await AnnotationModel.findOne({
-      where: { task_id, sentence_id, annotator_id }
-    });
-
-    if (!existingAnnotation) {
-      return res.status(404).json({
-        message: "Sentence not found in your assigned annotations"
-      });
-    }
-
-    
-    await AnnotationModel.update(
-      { label, certainty },
-      {
-        where: { task_id, sentence_id, annotator_id }
-      }
-    );
-
-    // هون منفحص اذا خلصو كل الجمل
+    // نحسب عدد الجمل المعينة والمصنفة
     const totalAssigned = await AnnotationModel.count({ where: { task_id, annotator_id } });
     const totalLabeled = await AnnotationModel.count({
       where: {
@@ -89,15 +46,15 @@ export const submitAnnotation = async (req, res) => {
       }
     });
 
-    const isFinalSentence = totalAssigned === totalLabeled;
-    let flaskResponse;
+    const isFinished = totalAssigned === totalLabeled;
+    let flaskResponse = null;
 
-    if (isFinalSentence) {
-      //منحسب عدد الانوتيتر بالمهمة مالك المهمة + الكولابوريتور 
+    if (isFinished) {
+      // عدد الأنوتيتر = صاحب المهمة + المتعاونين
       const taskCollaborators = await TaskCollaboratorModel.findAll({ where: { task_id } });
       const totalAnnotators = taskCollaborators.length + 1;
 
-    
+      // كم واحد فعلاً خلص تصنيف كل الجمل؟
       const completedAnnotators = await AnnotationModel.findAll({
         where: {
           task_id,
@@ -109,7 +66,7 @@ export const submitAnnotation = async (req, res) => {
 
       const totalCompletedAnnotators = completedAnnotators.length;
 
-      //اذا جميع الانوتيتر خلصو احسب التوافق بينهم
+      // إذا الكل مخلص، نحسب معامل التوافق
       if (totalCompletedAnnotators === totalAnnotators) {
         const annotations = await AnnotationModel.findAll({
           where: {
@@ -164,21 +121,74 @@ export const submitAnnotation = async (req, res) => {
           }
         }
 
-        return res.status(202).send({
-          message: "You have finished all your assigned sentences",
+        return res.status(200).json({
+          message: "You have finished all your sentences. Agreement has been calculated.",
           isFinished: true,
           flaskResponse
         });
 
       } else {
-        // اذا مش الكل مخلص 
-        return res.status(202).send({
+        // المستخدم خلص، بس الفريق لسه مش كله
+        return res.status(200).json({
           message: "Thank you, You have completed your annotations.Agreement results will be available once all team members finish.",
           isFinished: true,
           flaskResponse: null
         });
       }
     }
+
+    // إذا لسه في جمل لهذا المستخدم
+    if (!annotation) {
+      return res.status(200).json({
+        message: "No more unannotated sentences.",
+        isFinished: true,
+        flaskResponse: null
+      });
+    }
+
+    return res.status(200).json({
+      sentence_id: annotation.sentence_id,
+      sentence_text: annotation.Sentence.sentence_text,
+      isFinished: false,
+      flaskResponse: null
+    });
+
+  } catch (error) {
+    console.error("Error fetching sentence:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
+export const submitAnnotation = async (req, res) => {
+  try {
+    const annotator_id = req.user.user_id;
+    const { task_id } = req.params;
+    const { sentence_id, label, certainty } = req.body;
+
+    if (!label || !certainty) {
+      return res.status(400).json({ message: "Label and certainty are required" });
+    }
+
+    const existingAnnotation = await AnnotationModel.findOne({
+      where: { task_id, sentence_id, annotator_id }
+    });
+
+    if (!existingAnnotation) {
+      return res.status(404).json({
+        message: "Sentence not found in your assigned annotations"
+      });
+    }
+
+    
+    await AnnotationModel.update(
+      { label, certainty },
+      {
+        where: { task_id, sentence_id, annotator_id }
+      }
+    );
 
   // هاي ريسبونس انه الانوتيشن تم
     return res.status(200).json({
