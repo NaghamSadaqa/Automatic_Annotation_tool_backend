@@ -137,7 +137,7 @@ export const uploadFile= async (req, res, next) => {
 
         
     // الخطوة الجديدة بعد التخزين
-  if (["sentiment", "sarcasm", "stance"].includes(annotation_type)) {
+  if (["sentiment", "sarcasm", "stance"].includes(annotation_type.toLowerCase())) {
   const sampleSize = Math.ceil(savedSentences.length * 0.1);
   const shuffled = [...savedSentences].sort(() => 0.5 - Math.random());
   const sampledSentences = shuffled.slice(0, sampleSize);
