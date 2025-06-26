@@ -3,7 +3,7 @@ import { Sequelize } from "sequelize";
  export const sequelize = new Sequelize('toolproj', 'root', '', {
     host: 'localhost',
     dialect: 'mysql',
-    logging: console.log 
+    logging: null
   });
 
 export const connectDB =()=>{
