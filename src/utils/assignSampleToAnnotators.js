@@ -4,7 +4,7 @@ import InvitationModel from '../../DB/model/invitation.js';
 import AnnotationTaskModel from '../../DB/model/annotationtask.js';
 import TaskCollaboratorModel from '../../DB/model/taskcollaborator.js';
 import UserModel from '../../DB/model/user.js';
-import {classifySentences} from "./aiHelper.js";
+import { classifySentences } from "./aiHelper.js";
 import { Op } from 'sequelize';
 import axios from 'axios';
 import { Parser } from "json2csv";
@@ -13,10 +13,90 @@ import fs from "fs";
 import path from "path";
 
 
+const calculateAgreement = async (task_id) => {
 
+  const annotations = await AnnotationModel.findAll({
+    where: {
+      task_id,
+      label: { [Op.ne]: null }
+    },
+    attributes: ['sentence_id', 'annotator_id', 'label'],
+    raw: true
+  });
 
-  export const getNextAnnotationSentence = async (req, res) => {
+  const grouped = {};
+  annotations.forEach(row => {
+    const key = row.sentence_id;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(row);
+  });
+
+  const labelPairs = [];
+  const disagreements = [];
+
+  for (const [sentenceId, group] of Object.entries(grouped)) {
+    if (group.length === 2) {
+      const [a1, a2] = group;
+      labelPairs.push({ annotator1: a1.label, annotator2: a2.label });
+
+      if (a1.label !== a2.label) {
+        disagreements.push({
+          sentence_id: sentenceId,
+          annotator1_label: a1.label,
+          annotator2_label: a2.label
+        });
+      }
+    }
+  }
+
+  let flaskResponse = null
+  if (labelPairs.length > 0) {
+    const labels1 = labelPairs.map(p => p.annotator1);
+    const labels2 = labelPairs.map(p => p.annotator2);
+
+    const flaskRes = await axios.post('http://localhost:5000/api/annotator-agreement', {
+      labels1,
+      labels2
+    });
+
+    flaskResponse = {
+      kappa: flaskRes.data.kappa,
+      message: flaskRes.data.message,
+    };
+
+    if (flaskRes.data.kappa < 0.8) {
+      flaskResponse.disagreements = disagreements;
+    }
+  }
+  return flaskResponse
+}
+
+export const StartResolvingDisagreements = async (req, res) => {
+
+  // just to set labels to null
+  const { task_id } = req.params
+  const { disagreements } = req.body;
+
+  disagreements.forEach(async (disagreement) => {
+    await AnnotationModel.update(
+      { label: null, certainty: null },
+      {
+        where: {
+          task_id,
+          sentence_id: disagreement.sentence_id,
+        }
+      }
+    );
+  })
+
+  return res.status(200).send()
+
+}
+
+export const getNextAnnotationSentence = async (req, res) => {
+
   try {
+
     const annotator_id = req.user.user_id;
     const { task_id } = req.params;
 
@@ -34,122 +114,47 @@ import path from "path";
           attributes: ['sentence_text']
         }
       ]
-    });
+    })
 
-    // نحسب عدد الجمل المعينة والمصنفة
-    const totalAssigned = await AnnotationModel.count({ where: { task_id, annotator_id } });
-    const totalLabeled = await AnnotationModel.count({
-      where: {
-        task_id,
-        annotator_id,
-        label: { [Op.ne]: null }
-      }
-    });
-
-    const isFinished = totalAssigned === totalLabeled;
-    let flaskResponse = null;
-
-    if (isFinished) {
-      // عدد الأنوتيتر = صاحب المهمة + المتعاونين
-      const taskCollaborators = await TaskCollaboratorModel.findAll({ where: { task_id } });
-      const totalAnnotators = taskCollaborators.length + 1;
-
-      // كم واحد فعلاً خلص تصنيف كل الجمل؟
-      const completedAnnotators = await AnnotationModel.findAll({
-        where: {
-          task_id,
-          label: { [Op.ne]: null }
-        },
-        attributes: ['annotator_id'],
-        group: ['annotator_id']
-      });
-
-      const totalCompletedAnnotators = completedAnnotators.length;
-
-      // إذا الكل مخلص، نحسب معامل التوافق
-      if (totalCompletedAnnotators === totalAnnotators) {
-        const annotations = await AnnotationModel.findAll({
-          where: {
-            task_id,
-            label: { [Op.ne]: null }
-          },
-          attributes: ['sentence_id', 'annotator_id', 'label'],
-          raw: true
-        });
-
-        const grouped = {};
-        annotations.forEach(row => {
-          const key = row.sentence_id;
-          if (!grouped[key]) grouped[key] = [];
-          grouped[key].push(row);
-        });
-
-        const labelPairs = [];
-        const disagreements = [];
-
-        for (const [sentenceId, group] of Object.entries(grouped)) {
-          if (group.length === 2) {
-            const [a1, a2] = group;
-            labelPairs.push({ annotator1: a1.label, annotator2: a2.label });
-
-            if (a1.label !== a2.label) {
-              disagreements.push({
-                sentence_id: sentenceId,
-                annotator1_label: a1.label,
-                annotator2_label: a2.label
-              });
-            }
-          }
-        }
-
-        if (labelPairs.length > 0) {
-          const labels1 = labelPairs.map(p => p.annotator1);
-          const labels2 = labelPairs.map(p => p.annotator2);
-
-          const flaskRes = await axios.post('http://localhost:5000/api/annotator-agreement', {
-            labels1,
-            labels2
-          });
-
-          flaskResponse = {
-            kappa: flaskRes.data.kappa,
-            message: flaskRes.data.message,
-          };
-
-          if (flaskRes.data.kappa < 0.8) {
-            flaskResponse.disagreements = disagreements;
-          }
-        }
-
-        return res.status(200).json({
-          message: "You have finished all your sentences. Agreement has been calculated.",
-          isFinished: true,
-          flaskResponse
-        });
-
-      } else {
-        // المستخدم خلص، بس الفريق لسه مش كله
-        return res.status(200).json({
-          message: "Thank you, You have completed your annotations.Agreement results will be available once all team members finish.",
-          isFinished: true,
-          flaskResponse: null
-        });
-      }
-    }
 
     // إذا لسه في جمل لهذا المستخدم
     if (!annotation) {
-      return res.status(200).json({
-        message: "No more unannotated sentences.",
-        isFinished: true,
-        flaskResponse: null
-      });
+
+      // This user finished all his assigned sentences, check if all annotators finished
+      const notAnnotated = await AnnotationModel.count({
+        where: {
+          task_id,
+          label: null
+        }
+      })
+
+      if (notAnnotated > 0) {
+        return res.status(200).json({
+          message: "You have finished all your assigned sentences. Aggreement will be calculated once all annotators finish.",
+          taskFinished: false,
+          flaskResponse: null
+        })
+      }
+      else {
+        // All annotators finished, calculate agreement
+        const flaskResponse = await calculateAgreement(task_id)
+
+        let message = "Annotation task completed. Agreement calculated."
+        if (flaskResponse.disagreements) {
+          message = "Annotation task completed. Agreement calculated with disagreements, please resolve"
+        }
+        return res.status(200).json({
+          message,
+          taskFinished: true,
+          flaskResponse: flaskResponse
+        });
+      }
     }
 
+    // This user has unannotated sentences, return the next one
     return res.status(200).json({
       sentence_id: annotation.sentence_id,
       sentence_text: annotation.Sentence.sentence_text,
-      isFinished: false,
       flaskResponse: null
     });
 
@@ -158,9 +163,6 @@ import path from "path";
     res.status(500).json({ message: "Server error" });
   }
 };
-
-
-
 
 export const submitAnnotation = async (req, res) => {
   try {
@@ -182,7 +184,7 @@ export const submitAnnotation = async (req, res) => {
       });
     }
 
-    
+
     await AnnotationModel.update(
       { label, certainty },
       {
@@ -190,7 +192,7 @@ export const submitAnnotation = async (req, res) => {
       }
     );
 
-  // هاي ريسبونس انه الانوتيشن تم
+    // هاي ريسبونس انه الانوتيشن تم
     return res.status(200).json({
       message: "Annotation submitted successfully",
       isFinished: false
@@ -202,14 +204,9 @@ export const submitAnnotation = async (req, res) => {
   }
 };
 
-
-
-
-
 export const calculateAgreementWithAI = async (req, res) => {
   try {
     const { task_id } = req.params;
-
     // جلب الجمل التي تم تصنيفها من الذكاء (is_sample = true)
     const sampleSentences = await SentenceModel.findAll({
       where: { task_id, is_sample: true },
@@ -243,9 +240,10 @@ export const calculateAgreementWithAI = async (req, res) => {
 
     // إرسال التصنيفات لفلاسك لحساب التوافق
     const flaskResponse = await axios.post("http://localhost:5000/agreement", {
-      ai_labels: aiLabels,
-      human_labels: humanLabels
+      ai_labels: aiLabels.map(label => label.toLowerCase()),
+      human_labels: humanLabels.map(label => label.toLowerCase())
     });
+    console.log("Flask response:", flaskResponse.data);
 
     const { agreement_percentage } = flaskResponse.data;
 
@@ -257,7 +255,7 @@ export const calculateAgreementWithAI = async (req, res) => {
         where: { task_id, is_sample: false }
       });
 
-      const annotationType = req.query.annotation_type || 'sentiment' ;
+      const annotationType = req.query.annotation_type || 'sentiment';
 
       const predictions = await classifySentences(remainingSentences, annotationType);
 
@@ -286,51 +284,38 @@ export const calculateAgreementWithAI = async (req, res) => {
     console.error("Error calculating agreement with AI:", error.message);
     res.status(500).json({ message: "Internal server error." });
   }
-};
-
-
-
-
-
-
-
+}
 
 export const exportFinalLabels1 = async (req, res) => {
   try {
     const { task_id } = req.params;
     const format = req.query.format || "csv";
 
-    // استرجاع جميع الجمل الخاصة بالمهمة
+    // استرجاع الجمل - استبدلها بالاستعلام الحقيقي عندك
     const sentences = await SentenceModel.findAll({
       where: { task_id },
       include: [
         {
-          model: AnnotationModel,
+          model: AnnotationModel, // تمثيل
           as: "Annotations",
-          where: {
-            label: { [Op.ne]: null },
-          },
-          required: false, // حتى لو ما فيها أنوتيشن ترجع
+          where: { label: { [Op.ne]: null } },
+          required: false,
         },
       ],
     });
 
+    // تجهيز السجلات
     const records = sentences.map(sentence => {
       let finalLabel = null;
       let source = "none";
 
-      // تصنيف بشري موجود؟
       if (sentence.Annotations?.length > 0) {
-        // نختار التصنيف الأعلى من حيث درجة الثقة
         const bestManual = sentence.Annotations.reduce((prev, curr) =>
           (prev.certainty || 0) > (curr.certainty || 0) ? prev : curr
         );
         finalLabel = bestManual.label;
         source = "human";
-      }
-
-      // إذا ما في تصنيف يدوي، مناخد الذكاء
-      else if (sentence.ai_label) {
+      } else if (sentence.ai_label) {
         finalLabel = sentence.ai_label;
         source = "ai";
       }
@@ -343,7 +328,6 @@ export const exportFinalLabels1 = async (req, res) => {
       };
     });
 
-    // Excel تصدير كـ
     if (format === "excel") {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Final Labels");
@@ -357,31 +341,30 @@ export const exportFinalLabels1 = async (req, res) => {
 
       worksheet.addRows(records);
 
-      const filePath = path.join("exports", `final_labels_${Date.now()}.xlsx`);
-      await workbook.xlsx.writeFile(filePath);
-      return res.download(filePath, "final_labels.xlsx", () => {
-        fs.unlinkSync(filePath);
-      });
+      // write buffer and send
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      res.setHeader('Content-Disposition', 'attachment; filename=final_labels.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(buffer);
 
     } else {
       // CSV
       const fields = ["sentence_id", "sentence_text", "final_label", "source"];
       const parser = new Parser({ fields });
       const csv = parser.parse(records);
+      const csvWithBOM = '\uFEFF' + csv;
 
-      const filePath = path.join("exports", `final_labels_${Date.now()}.csv`);
-      fs.writeFileSync(filePath, csv);
-      return res.download(filePath, "final_labels.csv", () => {
-        fs.unlinkSync(filePath);
-      });
+      res.setHeader('Content-Disposition', 'attachment; filename=final_labels.csv');
+      res.setHeader('Content-Type', 'text/csv');
+      return res.send(csvWithBOM);
     }
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Export failed", error: error.message });
+    return res.status(500).json({ message: "Export failed", error: error.message });
   }
-};
-
+}
 
 
 export const getSampleAnnotations = async (req, res) => {
@@ -429,4 +412,4 @@ export const getSampleAnnotations = async (req, res) => {
     console.error("Error in getSampleAnnotations:", error);
     res.status(500).json({ message: "Server error" });
   }
-};
+}
